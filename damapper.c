@@ -713,6 +713,8 @@ int main(int argc, char *argv[])
         exit (1);
       }
 
+    fclose(dbvis);
+
     if ((index = Fopen(Catenate(apwd,"/.",aroot,".idx"),"r")) == NULL)
       exit (1);
     if (fread(&dbase,sizeof(HITS_DB),1,index) != 1)
