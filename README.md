@@ -3,15 +3,14 @@
 ## _Author:  Gene Myers_
 ## _First:   July 11, 2016_
 
+For typeset documentation, examples of use, and design philosophy please go to
+my [blog](https://dazzlerblog.wordpress.com/command-guides/damapper-commands).
 
 The commands below permit one to find the best, or several good alternative,
 locations that a read may have been sampled from in a reference genome.  The
 code is designed for PACBIO reads with an assumption of a 15% average error
 rate and occational large drop out regions where the quality is exceedingly
 low.
-
-For typeset documentation, examples of use, and design philosophy please go to
-my [blog](https://dazzlerblog.wordpress.com/command-guides/damapper-commands).
 
 ```
 1. damapper [-vbpCN] [-k<int(20)>] [-t<int>] [-M<int>] [-T<int(4)>]
@@ -53,7 +52,7 @@ The -p option requests that damapper produce a repeat profile track for each rea
 For each trace-point sized interval (established by the -s parameter) the number of
 times, c, this segment is involved in a distinct alignment to the reference is
 estimated.  0 is recorded for segments that don't match anything in the reference,
-1 for segments that match uniquely, and otherwise floor(log10c/10) up to a cap of
+1 for segments that match uniquely, and otherwise floor(log<sub>10</sub>c/10) up to a cap of
 40 corresponding to 10,000 copies.  Observe carefully that the track has the same
 form as intrinsic quality values.  They can be output by DBdump and DaViewer is able
 to graphically display them.  These profiles should make it obvious when a read does
