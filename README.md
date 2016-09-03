@@ -11,7 +11,7 @@ rate and occational large drop out regions where the quality is exceedingly
 low.
 
 For typeset documentation, examples of use, and design philosophy please go to
-my [blog](https://dazzlerblog.wordpress.com).
+my [blog](https://dazzlerblog.wordpress.com/command-guides/damapper-commands).
 
 ```
 1. damapper [-vbpCN] [-k<int(20)>] [-t<int>] [-M<int>] [-T<int(4)>]
