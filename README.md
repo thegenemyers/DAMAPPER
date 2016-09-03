@@ -1,26 +1,26 @@
+# The Damapper Library
+
+## _Author:  Gene Myers_
+## _First:   July 11, 2016_
 
 
-*** PLEASE GO TO THE DAZZLER BLOG (https://dazzlerblog.wordpress.com) FOR TYPESET ***
-         DOCUMENTATION, EXAMPLES OF USE, AND DESIGN PHILOSOPHY.
-
-
-                      The Damapper Library
-
-                                      Author:  Gene Myers
-                                      First:   July 11, 2016
-
-  The commands below permit one to find the best, or several good alternative,
+The commands below permit one to find the best, or several good alternative,
 locations that a read may have been sampled from in a reference genome.  The
 code is designed for PACBIO reads with an assumption of a 15% average error
 rate and occational large drop out regions where the quality is exceedingly
 low.
 
+For typeset documentation, examples of use, and design philosophy please go to
+my [blog](https://dazzlerblog.wordpress.com).
+
+```
 1. damapper [-vbpCN] [-k<int(20)>] [-t<int>] [-M<int>] [-T<int(4)>]
                      [-e<double(.85)] [-s<int(100)>] [-n<double(1.)>]
                      [-m<track>]+ <ref:db|dam> <reads:db|dam> ...
+```
 
-Search the reference data base <ref> for the best matches to each read in the list of
-databases or database blocks <reads>.  The parameters -v, -b, -k, -t, -M, -T -e, -s,
+Search the reference data base \<ref\> for the best matches to each read in the list of
+databases or database blocks \<reads\>.  The parameters -v, -b, -k, -t, -M, -T -e, -s,
 and -m are exactly as for the daligner (see here).  Matches at the expected correlation
 given by -e are sought and unlike daligner they can be of any length (i.e. short).
 Alignments at much lower rates are not forced in order to report a single matching
@@ -32,7 +32,7 @@ are within given fraction of optimal are also reported, e.g. -n.95 reports all m
 within 95% of the top match.
 
 For a given reference data base X and read block Y, damapper will produce the files
-Y.X.M<i>.las where i ranges from 1 to T where T is the number of specified threads.
+Y.X.M\<i\>.las where i ranges from 1 to T where T is the number of specified threads.
 Note carefully that the numbering starts at 1 and the order of X and Y is reversed
 from that on the command line (both of which are different than the conventions for
 daligner).  The numbering starts at 1 so that the program LAcat can be used to
@@ -44,10 +44,10 @@ la's in the chain occur in increasing order of A-coordinate.  Moreover, if sever
 near optimal matches are reported, matches appear in order of score starting
 with the best.
 
-It the -C option is set, then damapper also outputs files X.Y.C<i>.las that contain all
-the same matches as in the X.Y.M<I>.las files but where the A-read is a contig of the
+It the -C option is set, then damapper also outputs files X.Y.C\<i\>.las that contain all
+the same matches as in the X.Y.M\<i\>.las files but where the A-read is a contig of the
 reference and the B-read is a mapped read.  And if the -N options is set, then the
-files Y.X.M<i>.las are not produced.
+files Y.X.M\<i\>.las are not produced.
 
 The -p option requests that damapper produce a repeat profile track for each read.
 For each trace-point sized interval (established by the -s parameter) the number of
@@ -60,20 +60,22 @@ to graphically display them.  These profiles should make it obvious when a read 
 not have a unique location in a reference sequence due to its being entirely or almost
 entirely repetitive.
 
+```
 2. HPC.damapper [-vbpCN]
                 [-k<int(20)>] [-t<int>] [-M<int>] [-e<double(.85)] [-s<int(100)]
                 [-n<double(1.)>] [-m<track>]+ [-B<int(4)>] [-T<int(4)>] [-f<name>]
                 <ref:db|dam> <reads:db|dam> [<first:int>[-<last:int>]]
+```
 
 HPC.damapper writes a UNIX shell script to the standard output that maps every read in
-blocks <first> to <last> of database <reads> to a reference sequence <ref>.  If <last>
-is missing then only the single block <first> is mapped, and if <first> is also missing
+blocks \<first\> to \<last\> of database \<reads\> to a reference sequence \<ref\>.  If \<last\>
+is missing then only the single block \<first\> is mapped, and if \<first\> is also missing
 then all blocks of the database are mapped.  Except for the -B and -f options, all
 other options are passed through to damapper, save of -v which is passed to every
 program in the script.  The -B option determines the maximum number of blocks mapped
 per call to damapper in the script.
 
-The command script output by HPC.damapper and other HPC.<x> programs consists of
+The command script output by HPC.damapper and other HPC.\<x\> programs consists of
 command blocks each of which begins with a comment line (begins with #) followed by a
 potentially long list of lines each containing a shell command.  Command blocks whose
 comment mentions "jobs" and gives the number of said in parenthesis, we call parallel
@@ -86,16 +88,18 @@ block should be performed in the order given and should complete before the next
 block is performed.
 
 If the -f option is set, then each command block is written to a file with a name of
-the form <name>.#.<description> where <name> is specified by the user in the -f option
+the form \<name\>.#.\<description\> where \<name\> is specified by the user in the -f option
 argument, # gives the order in which the command block in the given file is to be
-performed in relation to other command block files, and <description> is a (very)
+performed in relation to other command block files, and \<description\> is a (very)
 short symbolic reminder of what the block is doing.  For example,
 "HPC.damapper -fJOBS REF DB" would produce the files:
 
+```
     JOBS.01.OVL
     JOBS.02.SORT
     JOBS.03.CHECK.OPT
     JOBS.04.RM
+```
 
 The files with the suffix .OPT are optional and need not be executed albeit we highly
 recommend that one run all the CHECK blocks.

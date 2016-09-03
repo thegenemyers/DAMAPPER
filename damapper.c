@@ -633,6 +633,7 @@ int main(int argc, char *argv[])
     if (argc <= 2)
       { fprintf(stderr,"Usage: %s %s\n",Prog_Name,Usage[0]);
         fprintf(stderr,"       %*s %s\n",(int) strlen(Prog_Name),"",Usage[1]);
+        fprintf(stderr,"       %*s %s\n",(int) strlen(Prog_Name),"",Usage[2]);
         exit (1);
       }
 
