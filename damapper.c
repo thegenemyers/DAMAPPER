@@ -516,6 +516,22 @@ static HITS_DB *complement_DB(HITS_DB *block, int inplace)
   return (cblock);
 }
 
+static char *CommandBuffer(char *aname, char *bname)
+{ static char *cat = NULL;
+  static int   max = -1;
+  int len;
+
+  len = 2*(strlen(aname) + strlen(bname)) + 200;
+  if (len > max)
+    { max = ((int) (1.2*len)) + 100;
+      if ((cat = (char *) realloc(cat,max+1)) == NULL)
+        { fprintf(stderr,"%s: Out of memory (Making path name)\n",Prog_Name);
+          exit (1);
+        }
+    }
+  return (cat);
+}
+
 int main(int argc, char *argv[])
 { HITS_DB    _ablock, _bblock;
   HITS_DB    *ablock = &_ablock, *bblock = &_bblock;
@@ -525,6 +541,7 @@ int main(int argc, char *argv[])
   int         alen,    blen;
   int         isdam, nblocks;   //  of reference (a-argument)
   int         mflag;
+  char       *command;
 
   Align_Spec *settings;
 
@@ -745,6 +762,7 @@ int main(int argc, char *argv[])
           broot = Root(bfile,".dam");
         else
           broot = Root(bfile,".db");
+        bindex = NULL;
 
         for (k = 1; k <= nblocks; k++)
           { if (isdam)
@@ -812,6 +830,37 @@ int main(int argc, char *argv[])
         free(bindex);
         free(broot);
         Close_DB(bblock);
+
+        command = CommandBuffer(aroot,broot);
+
+        if ((mflag & FLAG_DOA) != 0)
+          { sprintf(command,"LAsort -a /tmp/%s.%s.M*.las",aroot,broot);
+            if (VERBOSE)
+              printf("\n%s\n",command);
+            system(command);
+            sprintf(command,"LAcat /tmp/%s.%s.M#.S >%s.%s",aroot,broot,aroot,broot);
+            if (VERBOSE)
+              printf("%s\n",command);
+            system(command);
+            sprintf(command,"rm /tmp/%s.%s.M*.las",aroot,broot);
+            if (VERBOSE)
+              printf("%s\n",command);
+            system(command);
+          }
+        if ((mflag & FLAG_DOB) != 0)
+          { sprintf(command,"LAsort -a /tmp/%s.%s.R*.las",broot,aroot);
+            if (VERBOSE)
+              printf("\n%s\n",command);
+            system(command);
+            sprintf(command,"LAmerge -a %s.%s.las /tmp/%s.%s.R*.S.las",broot,aroot,broot,aroot);
+            if (VERBOSE)
+              printf("%s\n",command);
+            system(command);
+            sprintf(command,"rm /tmp/%s.%s.R*.las",broot,aroot);
+            if (VERBOSE)
+              printf("%s\n",command);
+            system(command);
+          }
       }
   }
 

@@ -1435,6 +1435,7 @@ static Splay *predOf(Splay *x, int thresh)
 static Splay *leftmost(Splay *x, int diag, int thresh)
 { Splay *a;
 
+  a = NULL;
   while (x != NULL)
     if (diag > x->diag)
       x = x->lft;
@@ -1751,10 +1752,10 @@ static void *chain_thread(void *arg)
 
   nidx = data->hbeg;
   nar  = hits[nidx].aread;
+  cnt  = cover;
   if (PROFILE)
     { int x;
 
-      cnt = cover;
       for (x = data->abeg; x < nar; x++)
         cnt = cnt + (aread[x].rlen-1) / SPACING + 2;
     }
@@ -1772,6 +1773,7 @@ static void *chain_thread(void *arg)
       chain   = NULL;
       expired = NULL;
       queue   = NULL;
+      qlast   = NULL;
       cand    = aread[ar].coff;
       ncan    = 0;
 
@@ -1797,14 +1799,11 @@ static void *chain_thread(void *arg)
                 if (h->cost >= hithr && h->orig->orig == h)
                   { int    ab, bb;
                     int    ae, be;
-                    int    da, db;
 
                     ab = h->orig->apos - Kmer;
                     bb = h->orig->bpos - Kmer;
                     ae = h->apos;
                     be = h->bpos;
-                    da = ae - ab;
-                    db = be - bb;
 #ifdef TEST_CANDID
                     printf("  %5d: (%5d,%5d)  (%8d,%8d)\n",h->cost,ab,ae,bb,be); fflush(stdout);
 #endif
@@ -3369,6 +3368,21 @@ epilogue:
     }
 }
 
+static char *NameBuffer(char *aname, char *bname)
+{ static char *cat = NULL;
+  static int   max = -1;
+  int len;
+
+  len = strlen(aname) + strlen(bname) + 100;
+  if (len > max)
+    { max = ((int) (1.2*len)) + 100;
+      if ((cat = (char *) realloc(cat,max+1)) == NULL)
+        { fprintf(stderr,"%s: Out of memory (Making path name)\n",Prog_Name);
+          exit (1);
+        }
+    }
+  return (cat);
+}
 
 void Reporter(char *aname, HITS_DB *ablock, char *bname, HITS_DB *bblock,
               Align_Spec *aspec, int mflag)
@@ -3376,10 +3390,12 @@ void Reporter(char *aname, HITS_DB *ablock, char *bname, HITS_DB *bblock,
 #ifndef NOTHREAD
   THREAD threads[NTHREADS];
 #endif
-  int i;
-  int ncheck;
+  int   i;
+  int   ncheck;
+  char *fname;
 
   ncheck = 0;
+  fname  = NameBuffer(aname,bname);
 
   MR_ablock = ablock;
   MR_bblock = bblock;
@@ -3392,12 +3408,14 @@ void Reporter(char *aname, HITS_DB *ablock, char *bname, HITS_DB *bblock,
   for (i = 0; i < NTHREADS; i++)
     { parmr[i].work  = New_Work_Data();
       if (mflag & 0x1)
-        { parmr[i].afile = Fopen(Catenate(aname,".",bname,Numbered_Suffix(".M",i+1,".las")),"w");
+        { sprintf(fname,"/tmp/%s.%s.M%d.las",aname,bname,i+1);
+          parmr[i].afile = Fopen(fname,"w");
           if (parmr[i].afile == NULL)
             exit (1);
         }
       if (mflag & 0x2)
-        { parmr[i].bfile = Fopen(Catenate(bname,".",aname,Numbered_Suffix(".C",i+1,".las")),"w");
+        { sprintf(fname,"/tmp/%s.%s.R%d.las",bname,aname,i+1);
+          parmr[i].bfile = Fopen(fname,"w");
           if (parmr[i].bfile == NULL)
             exit (1);
         }

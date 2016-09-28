@@ -30,12 +30,11 @@ covering a segment of a read, and may report several chains covering disjoint se
 are within given fraction of optimal are also reported, e.g. -n.95 reports all matches
 within 95% of the top match.
 
-For a given reference data base X and read block Y, damapper will produce the files
-Y.X.M\<i\>.las where i ranges from 1 to T where T is the number of specified threads.
-Note carefully that the numbering starts at 1 and the order of X and Y is reversed
-from that on the command line (both of which are different than the conventions for
-daligner).  The numbering starts at 1 so that the program LAcat can be used to
-concatenated the sorted contents of the NTHREAD files together into one result file.
+For a given reference data base X and read block Y, damapper produces the single file
+Y.X..las.
+Note the order of X and Y is reversed
+from that on the command line (which is different than the conventions for
+daligner).
 The reversal of the order of the blocks emphasizes that in the result, the A-reads
 are the mapped reads, and the B-reads are contigs of the reference.  Each file is
 sorted in order of the A-reads, and if a match is a chain of local alignments the
@@ -43,10 +42,11 @@ la's in the chain occur in increasing order of A-coordinate.  Moreover, if sever
 near optimal matches are reported, matches appear in order of score starting
 with the best.
 
-It the -C option is set, then damapper also outputs files X.Y.C\<i\>.las that contain all
-the same matches as in the X.Y.M\<i\>.las files but where the A-read is a contig of the
+Itf the -C option is set, then damapper also outputs a file X.Y.las for a given
+block pair that contains all
+the same matches as in X.Y.las but where the A-read is a contig of the
 reference and the B-read is a mapped read.  And if the -N options is set, then the
-files Y.X.M\<i\>.las are not produced.
+files Y.X.las is not produced.
 
 The -p option requests that damapper produce a repeat profile track for each read.
 For each trace-point sized interval (established by the -s parameter) the number of
@@ -95,9 +95,7 @@ short symbolic reminder of what the block is doing.  For example,
 
 ```
     JOBS.01.OVL
-    JOBS.02.SORT
-    JOBS.03.CHECK.OPT
-    JOBS.04.RM
+    JOBS.02.CHECK.OPT
 ```
 
 The files with the suffix .OPT are optional and need not be executed albeit we highly

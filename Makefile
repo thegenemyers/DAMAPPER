@@ -20,4 +20,4 @@ install:
 
 package:
 	make clean
-	tar -zcf damapper.tar.gz README LICENSE *.h *.c Makefile
+	tar -zcf damapper.tar.gz README.md LICENSE *.h *.c Makefile

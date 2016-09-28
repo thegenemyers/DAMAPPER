@@ -23,7 +23,7 @@
 
 static char *Usage[] =
   { "[-vbpCN] [-k<int(20)>] [-t<int>] [-M<int>] [-e<double(.85)] [-s<int(100)]",
-    "         [-n<double(1.)] [-m<track>]+ [-B<int( 4)>] [-T<int(4)>] [-F<name>]",
+    "         [-n<double(1.)] [-m<track>]+ [-B<int( 4)>] [-T<int(4)>] [-f<name>]",
     "         <ref:db|dam> <reads:db|dam> [<first:int>[-<last:int>]]"
   };
 
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
           case 'B':
             ARG_NON_NEGATIVE(BUNIT,"Blocks per command")
             break;
-          case 'F':
+          case 'f':
             ONAME = argv[i]+2;
             break;
           case 'M':
@@ -394,114 +394,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    //  ... and then all the initial sort & merge jobs for each block pair
-
-    if (ONAME != NULL)
-      { fclose(out);
-        sprintf(name,"%s.02.CAT",ONAME);
-        out = fopen(name,"w");
-      }
-
-    if (FORWARD && REVERSE)
-      fprintf(out,"# Catenate jobs (%d)\n", 2*(lblock-fblock)+2);
-    else
-      fprintf(out,"# Catenate jobs (%d)\n", (lblock-fblock)+1);
-
-#ifdef LSF
-    jobid = 1;
-#endif
-
-    if (FORWARD)
-      for (j = fblock; j <= lblock; j++)
-        {
-#ifdef LSF
-          fprintf(out,LSF_SORT,jobid++);
-          fprintf(out," \"");
-#endif
-          fprintf(out,"LAsort -a");
-          if (VON)
-            fprintf(out," -v");
-          for (k = 1; k <= NTHREADS; k++)
-            { if (useblock2)
-                fprintf(out," %s.%d",root2,j);
-              else
-                fprintf(out," %s",root2);
-              fprintf(out,".%s",root1);
-              fprintf(out,".M%d",k);
-            }
-          fprintf(out," && LAcat");
-          if (VON)
-            fprintf(out," -v");
-          if (useblock2)
-            fprintf(out," %s.%d",root2,j);
-          else
-            fprintf(out," %s",root2);
-          fprintf(out,".%s.M#.S",root1);
-          if (usepath2)
-            if (useblock2)
-              fprintf(out," >%s/%s.%d.%s.las",pwd2,root2,j,root1);
-            else
-              fprintf(out," >%s/%s.%s.las",pwd2,root2,root1);
-          else
-            if (useblock2)
-              fprintf(out," >%s.%d.%s.las",root2,j,root1);
-            else
-              fprintf(out," >%s.%s.las",root2,root1);
-#ifdef LSF
-          fprintf(out,"\"");
-#endif
-          fprintf(out,"\n");
-        }
-    if (REVERSE)
-      for (j = fblock; j <= lblock; j++)
-        {
-#ifdef LSF
-          fprintf(out,LSF_SORT,jobid++);
-          fprintf(out," \"");
-#endif
-          fprintf(out,"LAsort -a");
-          if (VON)
-            fprintf(out," -v");
-          for (k = 1; k <= NTHREADS; k++)
-            { fprintf(out," %s",root1);
-              if (useblock2)
-                fprintf(out,".%s.%d",root2,j);
-              else
-                fprintf(out,".%s",root2);
-              fprintf(out,".C%d",k);
-            }
-          fprintf(out," && LAmerge -a");
-          if (VON)
-            fprintf(out," -v");
-          if (usepath2)
-            if (useblock2)
-              fprintf(out," %s/%s.%s.%d",pwd2,root1,root2,j);
-            else
-              fprintf(out," %s/%s.%s",pwd2,root1,root2);
-          else
-            if (useblock2)
-              fprintf(out," %s.%s.%d",root1,root2,j);
-            else
-              fprintf(out," %s.%s",root1,root2);
-          for (k = 1; k <= NTHREADS; k++)
-            { fprintf(out," %s",root1);
-              if (useblock2)
-                fprintf(out,".%s.%d",root2,j);
-              else
-                fprintf(out,".%s",root2);
-              fprintf(out,".C%d.S",k);
-            }
-#ifdef LSF
-          fprintf(out,"\"");
-#endif
-          fprintf(out,"\n");
-        }
-
     //  Check .las (optional)
 
     if (ONAME != NULL)
       { fclose(out);
-        sprintf(name,"%s.03.CHECK.OPT",ONAME);
+        sprintf(name,"%s.02.CHECK.OPT",ONAME);
         out = fopen(name,"w");
       }
 
@@ -551,61 +448,6 @@ int main(int argc, char *argv[])
               fprintf(out," %s.%s.%d",root1,root2,j);
             else
               fprintf(out," %s.%s",root1,root2);
-          fprintf(out,"\n");
-        }
-
-    //  Clean up
-
-    if (ONAME != NULL)
-      { fclose(out);
-        sprintf(name,"%s.04.RM",ONAME);
-        out = fopen(name,"w");
-      }
-
-    fprintf(out,"# Cleanup all intermediate .las files\n");
-
-    if (FORWARD)
-      for (j = fblock; j <= lblock; j++)
-        { fprintf(out,"rm");
-          for (k = 1; k <= NTHREADS; k++)
-            { if (useblock2)
-                fprintf(out," %s.%d",root2,j);
-              else
-                fprintf(out," %s",root2);
-              fprintf(out,".%s.M%d.las",root1,k);
-            }
-          fprintf(out,"\n");
-          fprintf(out,"rm");
-          for (k = 1; k <= NTHREADS; k++)
-            { if (useblock2)
-                fprintf(out," %s.%d",root2,j);
-              else
-                fprintf(out," %s",root2);
-              fprintf(out,".%s.M%d.S.las",root1,k);
-            }
-          fprintf(out,"\n");
-        }
-    if (REVERSE)
-      for (j = fblock; j <= lblock; j++)
-        { fprintf(out,"rm");
-          for (k = 1; k <= NTHREADS; k++)
-            { fprintf(out," %s",root1);
-              if (useblock2)
-                fprintf(out,".%s.%d",root2,j);
-              else
-                fprintf(out,".%s",root2);
-              fprintf(out,".C%d.las",k);
-            }
-          fprintf(out,"\n");
-          fprintf(out,"rm");
-          for (k = 1; k <= NTHREADS; k++)
-            { fprintf(out," %s",root1);
-              if (useblock2)
-                fprintf(out,".%s.%d",root2,j);
-              else
-                fprintf(out,".%s",root2);
-              fprintf(out,".C%d.S.las",k);
-            }
           fprintf(out,"\n");
         }
 
