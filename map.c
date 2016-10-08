@@ -3446,9 +3446,11 @@ void Reporter(char *aname, HITS_DB *ablock, char *bname, HITS_DB *bblock,
         ncheck += parmr[i].ncheck;
     }
 
-  printf("      ");
-  Print_Number(ncheck,0,stdout);
-  printf(" mapped segments\n");
+  if (VERBOSE)
+    { printf("      ");
+      Print_Number(ncheck,0,stdout);
+      printf(" mapped segments\n");
+    }
 
   if ( ! PROFILE) return;
    

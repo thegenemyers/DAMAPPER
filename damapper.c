@@ -828,39 +828,40 @@ int main(int argc, char *argv[])
         Close_DB(ablock);
 
         free(bindex);
-        free(broot);
         Close_DB(bblock);
 
         command = CommandBuffer(aroot,broot);
 
         if ((mflag & FLAG_DOA) != 0)
-          { sprintf(command,"LAsort -a /tmp/%s.%s.M*.las",aroot,broot);
+          { sprintf(command,"LAsort -a /tmp/%s.%s.M*.las",broot,aroot);
             if (VERBOSE)
               printf("\n%s\n",command);
             system(command);
-            sprintf(command,"LAcat /tmp/%s.%s.M#.S >%s.%s",aroot,broot,aroot,broot);
+            sprintf(command,"LAcat /tmp/%s.%s.M#.S >%s.%s.las",broot,aroot,broot,aroot);
             if (VERBOSE)
               printf("%s\n",command);
             system(command);
-            sprintf(command,"rm /tmp/%s.%s.M*.las",aroot,broot);
+            sprintf(command,"rm /tmp/%s.%s.M*.las",broot,aroot);
             if (VERBOSE)
               printf("%s\n",command);
             system(command);
           }
         if ((mflag & FLAG_DOB) != 0)
-          { sprintf(command,"LAsort -a /tmp/%s.%s.R*.las",broot,aroot);
+          { sprintf(command,"LAsort -a /tmp/%s.%s.R*.las",aroot,broot);
             if (VERBOSE)
               printf("\n%s\n",command);
             system(command);
-            sprintf(command,"LAmerge -a %s.%s.las /tmp/%s.%s.R*.S.las",broot,aroot,broot,aroot);
+            sprintf(command,"LAmerge -a %s.%s /tmp/%s.%s.R*.S.las",aroot,broot,aroot,broot);
             if (VERBOSE)
               printf("%s\n",command);
             system(command);
-            sprintf(command,"rm /tmp/%s.%s.R*.las",broot,aroot);
+            sprintf(command,"rm /tmp/%s.%s.R*.las",aroot,broot);
             if (VERBOSE)
               printf("%s\n",command);
             system(command);
           }
+
+        free(broot);
       }
   }
 
