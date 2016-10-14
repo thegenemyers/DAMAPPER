@@ -13,7 +13,7 @@ rate and occational large drop out regions where the quality is exceedingly
 low.
 
 ```
-1. damapper [-vbpCN] [-k<int(20)>] [-t<int>] [-M<int>] [-T<int(4)>]
+1. damapper [-vbpCNz] [-k<int(20)>] [-t<int>] [-M<int>] [-T<int(4)>]
                      [-e<double(.85)] [-s<int(100)>] [-n<double(1.)>]
                      [-m<track>]+ <ref:db|dam> <reads:db|dam> ...
 ```
@@ -59,8 +59,10 @@ to graphically display them.  These profiles should make it obvious when a read 
 not have a unique location in a reference sequence due to its being entirely or almost
 entirely repetitive.
 
+The -z option requests that damapper does not sort the output.
+
 ```
-2. HPC.damapper [-vbpCN]
+2. HPC.damapper [-vbpCNz]
                 [-k<int(20)>] [-t<int>] [-M<int>] [-e<double(.85)] [-s<int(100)]
                 [-n<double(1.)>] [-m<track>]+ [-B<int(4)>] [-T<int(4)>] [-f<name>]
                 <ref:db|dam> <reads:db|dam> [<first:int>[-<last:int>]]

@@ -546,6 +546,7 @@ int main(int argc, char *argv[])
   Align_Spec *settings;
 
   int    COVER, NOMAP;
+  int    NOSORT;
   int    KMER_LEN;
   int    MAX_REPS;
   double AVE_ERROR;
@@ -585,7 +586,7 @@ int main(int argc, char *argv[])
       if (argv[i][0] == '-')
         switch (argv[i][1])
         { default:
-            ARG_FLAGS("vbpCN")
+            ARG_FLAGS("vbpCNz")
             break;
           case 'e':
             ARG_REAL(AVE_ERROR)
@@ -646,6 +647,7 @@ int main(int argc, char *argv[])
     PROFILE   = flags['p'];
     COVER     = flags['C'];
     NOMAP     = flags['N'];
+    NOSORT    = flags['z'];
 
     if (argc <= 2)
       { fprintf(stderr,"Usage: %s %s\n",Prog_Name,Usage[0]);
@@ -832,34 +834,63 @@ int main(int argc, char *argv[])
 
         command = CommandBuffer(aroot,broot);
 
-        if ((mflag & FLAG_DOA) != 0)
-          { sprintf(command,"LAsort -a /tmp/%s.%s.M*.las",broot,aroot);
+        if ( NOSORT )
+        {
+          if ((mflag & FLAG_DOA) != 0)
+          {
+            sprintf(command,"LAcat /tmp/%s.%s.M*.las >%s.%s.las",broot,aroot,broot,aroot);
             if (VERBOSE)
-              printf("\n%s\n",command);
+             printf("%s\n",command);
             system(command);
-            sprintf(command,"LAcat /tmp/%s.%s.M#.S >%s.%s.las",broot,aroot,broot,aroot);
-            if (VERBOSE)
-              printf("%s\n",command);
-            system(command);
+
             sprintf(command,"rm /tmp/%s.%s.M*.las",broot,aroot);
             if (VERBOSE)
-              printf("%s\n",command);
+             printf("%s\n",command);
             system(command);
           }
-        if ((mflag & FLAG_DOB) != 0)
-          { sprintf(command,"LAsort -a /tmp/%s.%s.R*.las",aroot,broot);
+          if ((mflag & FLAG_DOB) != 0)
+          {
+            sprintf(command,"LAcat /tmp/%s.%s.R*.las >%s.%s.las",aroot,broot,aroot,broot);
             if (VERBOSE)
-              printf("\n%s\n",command);
-            system(command);
-            sprintf(command,"LAmerge -a %s.%s /tmp/%s.%s.R*.S.las",aroot,broot,aroot,broot);
-            if (VERBOSE)
-              printf("%s\n",command);
-            system(command);
+             printf("%s\n",command);
+
             sprintf(command,"rm /tmp/%s.%s.R*.las",aroot,broot);
             if (VERBOSE)
               printf("%s\n",command);
             system(command);
           }
+        }
+        else
+        {
+          if ((mflag & FLAG_DOA) != 0)
+            { sprintf(command,"LAsort -a /tmp/%s.%s.M*.las",broot,aroot);
+              if (VERBOSE)
+                printf("\n%s\n",command);
+              system(command);
+              sprintf(command,"LAcat /tmp/%s.%s.M#.S >%s.%s.las",broot,aroot,broot,aroot);
+              if (VERBOSE)
+                printf("%s\n",command);
+              system(command);
+              sprintf(command,"rm /tmp/%s.%s.M*.las",broot,aroot);
+              if (VERBOSE)
+               printf("%s\n",command);
+              system(command);
+            }
+          if ((mflag & FLAG_DOB) != 0)
+            { sprintf(command,"LAsort -a /tmp/%s.%s.R*.las",aroot,broot);
+              if (VERBOSE)
+                printf("\n%s\n",command);
+              system(command);
+              sprintf(command,"LAmerge -a %s.%s /tmp/%s.%s.R*.S.las",aroot,broot,aroot,broot);
+              if (VERBOSE)
+                printf("%s\n",command);
+              system(command);
+              sprintf(command,"rm /tmp/%s.%s.R*.las",aroot,broot);
+              if (VERBOSE)
+                printf("%s\n",command);
+              system(command);
+            }
+        }
 
         free(broot);
       }
