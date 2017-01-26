@@ -2592,7 +2592,7 @@ static void *report_thread(void *arg)
     bmatch = amatch;
   linker = Malloc(sizeof(Links)*COmax,"Allocating link vector");
   perm   = Malloc(sizeof(Links *)*COmax,"Allocating permutation vector");
-  part   = Malloc(sizeof(Zones *)*COmax,"Allocating zones vector");
+  part   = Malloc(sizeof(Zones)*COmax,"Allocating zones vector");
 
   tbuf->max   = 2*TRACE_CHUNK;
   tbuf->trace = Malloc(sizeof(short)*tbuf->max,"Allocating trace vector");
