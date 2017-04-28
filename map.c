@@ -2707,7 +2707,7 @@ static void *report_thread(void *arg)
                                 exit (1);
                             }
                           amatch[novl].path.trace = (void *) (tbuf->top);
-                          memcpy(tbuf->trace+tbuf->top,apath->trace,sizeof(short)*apath->tlen);
+                          memmove(tbuf->trace+tbuf->top,apath->trace,sizeof(short)*apath->tlen);
                           tbuf->top += apath->tlen;
 
                           if (MR_doB)
@@ -2724,7 +2724,7 @@ static void *report_thread(void *arg)
                                     exit (1);
                                 }
                               bmatch[novl].path.trace = (void *) (tbuf->top);
-                              memcpy(tbuf->trace+tbuf->top,bpath->trace,sizeof(short)*bpath->tlen);
+                              memmove(tbuf->trace+tbuf->top,bpath->trace,sizeof(short)*bpath->tlen);
                               tbuf->top += bpath->tlen;
                             }
 
