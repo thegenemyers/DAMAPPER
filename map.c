@@ -214,10 +214,12 @@ static void *lex_thread(void *arg)
             x = tptr[d]++;
             trg[x] = src[i];
             q = table[d];
-            if ((q & NTHREADS) != 0)
-              { q = q & NMASK;
+            if (q >= NTHREADS)
+              { q &= NMASK;
                 if (x >= thrsh[q])
-                  table[d] = ++q;
+                  { table[d] -= NMASK;
+                    q += 1;
+                  }
               }
             sptr[((b >> qshift) & QMASK) | q] += 1;
           }
@@ -234,10 +236,12 @@ static void *lex_thread(void *arg)
             x = tptr[d]++;
             trg[x] = src[i];
             q = table[d];
-            if ((q & NTHREADS) != 0)
-              { q = q & NMASK;
+            if (q >= NTHREADS)
+              { q &= NMASK;
                 if (x >= thrsh[q])
-                  table[d] = ++q;
+                  { table[d] -= NMASK;
+                    q += 1;
+                  }
               }
             sptr[((src[i].p2 << NSHIFT) & QMASK) | q] += 1;
           }
@@ -249,10 +253,12 @@ static void *lex_thread(void *arg)
             x = tptr[d]++;
             trg[x] = src[i];
             q = table[d];
-            if ((q & NTHREADS) != 0)
-              { q = q & NMASK;
+            if (q >= NTHREADS)
+              { q &= NMASK;
                 if (x >= thrsh[q])
-                  table[d] = ++q;
+                  { table[d] -= NMASK;
+                    q += 1;
+                  }
               }
             sptr[((src[i].p2 >> qshift) & QMASK) | q] += 1;
           }
@@ -281,10 +287,12 @@ static void *lex_thread(void *arg)
             x = tptr[d]++;
             trg[x] = src[i];
             q = table[d];
-            if ((q & NTHREADS) != 0)
-              { q = q & NMASK;
+            if (q >= NTHREADS)
+              { q &= NMASK;
                 if (x >= thrsh[q])
-                  table[d] = ++q;
+                  { table[d] -= NMASK;
+                    q += 1;
+                  }
               }
             sptr[((c >> qshift) & QMASK) | q] += 1;
           }
@@ -296,10 +304,12 @@ static void *lex_thread(void *arg)
             x = tptr[d]++;
 	    trg[x] = src[i];
             q = table[d];
-            if ((q & NTHREADS) != 0)
-              { q = q & NMASK;
+            if (q >= NTHREADS)
+              { q &= NMASK;
                 if (x >= thrsh[q])
-                  table[d] = ++q;
+                  { table[d] -= NMASK;
+                    q += 1;
+                  }
               }
 	    sptr[((b >> qshift) & QMASK) | q] += 1;
           }
@@ -373,12 +383,13 @@ static Double *lex_sort(int bytes[16], Double *src, Double *trg, Lex_Arg *parmx)
         for (i = 0; i < NTHREADS; i++)
           { y = parmx[i].tptr[j];
             parmx[i].tptr[j] = x;
-            if (x+y <= LEX_zthresh[k])
-              parmx[i].table[j] = k;
-            else if (x >= LEX_zthresh[k])
-              parmx[i].table[j] = ++k;
-            else
-              parmx[i].table[j] = (k++ | NTHREADS);
+            if (x >= LEX_zthresh[k])
+              k += 1;
+            parmx[i].table[j] = k;
+            while (x+y > LEX_zthresh[k])
+              { parmx[i].table[j] += NTHREADS;
+                k += 1;
+              }
             x += y;
           }
 
@@ -406,15 +417,27 @@ static Double *lex_sort(int bytes[16], Double *src, Double *trg, Lex_Arg *parmx)
                 printf(" OO");
                 printf("\n");
               }
+            else
+              { printf("%6d: %8llx %8llx %8llx %8llx : %4llx",
+                       i,LEX_src[i].p2>>32,(LEX_src[i].p2)&0xffffffffll,LEX_src[i].p1>>32,
+                       LEX_src[i].p1&0xffffffffll,LEX_src[i].p2&x);
+                printf("\n");
+              }
         }
       else
         { x = (1llu << (LEX_shift+BSHIFT))-1;
           for (i = 0; i < len; i++)
-            if (i > 0 && (LEX_src[i].p1 & x) < (LEX_src[i-1].p1 & x))
+            if (i > 0 && ((LEX_src[i].p1 & x) >> LEX_shift) < ((LEX_src[i-1].p1 & x) >> LEX_shift))
               { printf("%6d: %8llx %8llx %8llx %8llx : %4llx",
                        i,LEX_src[i].p2>>32,(LEX_src[i].p2)&0xffffffffll,LEX_src[i].p1>>32,
-                       LEX_src[i].p1&0xffffffffll,LEX_src[i].p1&x);
+                       LEX_src[i].p1&0xffffffffll,(LEX_src[i].p1&x)>>LEX_shift);
                 printf(" OO");
+                printf("\n");
+              }
+            else
+              { printf("%6d: %8llx %8llx %8llx %8llx : %4llx",
+                       i,LEX_src[i].p2>>32,(LEX_src[i].p2)&0xffffffffll,LEX_src[i].p1>>32,
+                       LEX_src[i].p1&0xffffffffll,(LEX_src[i].p1&x)>>LEX_shift);
                 printf("\n");
               }
         }
@@ -476,7 +499,11 @@ static void *tuple_thread(void *arg)
       f  = anno1[i-1];
       for (; i <= j; i++)
         { if (i == j)
-            jo = m + j*Kmer + (Kmer-1) - reads[j].boff;
+            { jo = m + j*Kmer - reads[j].boff;
+              if (jo == 0)
+                continue;
+              jo += Kmer-1;
+            }
           b = f;
           f = anno1[i];
           for (a = b; a <= f; a += 2)
@@ -588,7 +615,11 @@ static void *biased_tuple_thread(void *arg)
       f = anno1[i-1];
       for (; i <= j; i++)
         { if (i == j)
-            jo = m + j*Kmer + (Kmer-1) - reads[j].boff;
+            { jo = m + j*Kmer - reads[j].boff;
+              if (jo == 0)
+                continue;
+              jo += Kmer-1;
+            }
           b = f;
           f = anno1[i];
           s1 = s+1;
@@ -1748,7 +1779,6 @@ static void *chain_thread(void *arg)
   }
 
   //  For every k-mer hit in hits[nidx..eidx) do
-
 
   nidx = data->hbeg;
   nar  = hits[nidx].aread;
@@ -3226,9 +3256,6 @@ void Match_Filter(HITS_DB *ablock, HITS_DB *bblock,
                        (1. * (alen + blen + nhits)) / 67108864);
         fflush(stdout);
       }
-
-    if (nhits == 0)
-      goto epilogue;
 
     if (nhits >= blen)
       bsort = (KmerPos *) Realloc(bsort,sizeof(SeedPair)*(nhits+1),
