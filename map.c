@@ -458,9 +458,9 @@ static int *NormShift = NULL;
 static int  LogNorm, LogThresh;
 static int  LogBase[4];
 
-static HITS_DB    *TA_block;
+static DAZZ_DB    *TA_block;
 static KmerPos    *TA_list;
-static HITS_TRACK *TA_track;
+static DAZZ_TRACK *TA_track;
 
 typedef struct
   { int64 *kptr;
@@ -474,7 +474,7 @@ typedef struct
 static void *tuple_thread(void *arg)
 { Tuple_Arg  *data  = (Tuple_Arg *) arg;
   int64      *kptr  = data->kptr;
-  HITS_READ  *reads = TA_block->reads;
+  DAZZ_READ  *reads = TA_block->reads;
   KmerPos    *list  = TA_list;
   int         i, j;
   int         n, m;
@@ -588,7 +588,7 @@ static void *tuple_thread(void *arg)
 
 static void *biased_tuple_thread(void *arg)
 { Tuple_Arg  *data  = (Tuple_Arg *) arg;
-  HITS_READ  *reads = TA_block->reads;
+  DAZZ_READ  *reads = TA_block->reads;
   int64      *kptr  = data->kptr;
   KmerPos    *list  = TA_list;
   int         i, j;
@@ -802,7 +802,7 @@ static void *compress_thread(void *arg)
   return (NULL);
 }
 
-static int find_read(int x, HITS_READ *a, int n)
+static int find_read(int x, DAZZ_READ *a, int n)
 { int64 l, r, m;
 
   // largest k s.t. a[k].boff - k*Kmer <= x (or n if does not exist)
@@ -819,7 +819,7 @@ static int find_read(int x, HITS_READ *a, int n)
   return (l);
 }
 
-void *Sort_Kmers(HITS_DB *block, int *len)
+void *Sort_Kmers(DAZZ_DB *block, int *len)
 { THREAD    threads[NTHREADS];
   Tuple_Arg parmt[NTHREADS];
   Comp_Arg  parmf[NTHREADS];
@@ -1195,8 +1195,8 @@ static void *merge_thread(void *arg)
  *
  ********************************************************************************************/
 
-static HITS_DB    *MR_ablock;
-static HITS_DB    *MR_bblock;
+static DAZZ_DB    *MR_ablock;
+static DAZZ_DB    *MR_bblock;
 static SeedPair   *MR_hits;
 static Align_Spec *MR_spec;
 static int         MR_start;
@@ -1557,7 +1557,7 @@ Splay *print_list(Splay *h, int hithr, Splay *orig)
 
 /*******************************************************************************************
  *
- *  EXAMINE AND CHAIN K-MER HITS
+ *  EXAMINE AND CHAIN K-MER DAZZ
  *
  ********************************************************************************************/
 
@@ -1650,7 +1650,7 @@ typedef struct
 static void *chain_thread(void *arg)
 { Report_Arg  *data   = (Report_Arg *) arg;
   SeedPair    *hits   = MR_hits;
-  HITS_READ   *aread  = MR_ablock->reads;
+  DAZZ_READ   *aread  = MR_ablock->reads;
   int          bstart = MR_bblock->tfirst;
 #if defined(TEST_CHAIN) || defined(TEST_CANDID)
   int          astart = MR_ablock->tfirst;
@@ -2111,7 +2111,7 @@ static void *chain_thread(void *arg)
 
 /*******************************************************************************************
  *
- *  EXAMINE ALIGNMENT HITS
+ *  EXAMINE ALIGNMENT DAZZ
  *
  ********************************************************************************************/
 
@@ -2554,8 +2554,8 @@ static void *report_thread(void *arg)
   Candidate   *cbase = data->cbase;
   Jump        *jbase = data->jbase;
 
-  HITS_READ   *aread  = MR_ablock->reads;
-  HITS_READ   *bread  = MR_bblock->reads;
+  DAZZ_READ   *aread  = MR_ablock->reads;
+  DAZZ_READ   *bread  = MR_bblock->reads;
   int          astart = MR_ablock->tfirst;
   char        *aseq   = (char *) (MR_ablock->bases);
   char        *bseq   = (char *) (MR_bblock->bases);
@@ -3073,7 +3073,7 @@ static Report_Arg *parmr;
 static int         tfilt;
 static int         firstime = 1;
 
-void Match_Filter(HITS_DB *ablock, HITS_DB *bblock,
+void Match_Filter(DAZZ_DB *ablock, DAZZ_DB *bblock,
                   void *vasort, int alen, void *vbsort, int blen, int comp, int start)
 
 { THREAD     threads[NTHREADS];
@@ -3411,7 +3411,7 @@ static char *NameBuffer(char *aname, char *bname)
   return (cat);
 }
 
-void Reporter(char *aname, HITS_DB *ablock, char *bname, HITS_DB *bblock,
+void Reporter(char *aname, DAZZ_DB *ablock, char *bname, DAZZ_DB *bblock,
               Align_Spec *aspec, int mflag)
 {
 #ifndef NOTHREAD
