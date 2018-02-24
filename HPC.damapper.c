@@ -22,7 +22,7 @@
 #undef  LSF  //  define if want a directly executable LSF script
 
 static char *Usage[] =
-  { "[-vbpCN] [-k<int(20)>] [-t<int>] [-M<int>] [-e<double(.85)] [-s<int(100)]",
+  { "[-vbpCNz] [-k<int(20)>] [-t<int>] [-M<int>] [-e<double(.85)] [-s<int(100)]",
     "         [-n<double(1.)] [-m<track>]+ [-B<int( 4)>] [-T<int(4)>] [-f<name>]",
     "         <ref:db|dam> <reads:db|dam> [<first:int>[-<last:int>]]"
   };
@@ -48,6 +48,7 @@ int main(int argc, char *argv[])
   int    BUNIT;
   int    VON, BON, PON, CON, NON;
   int    TINT, KINT, SINT, MINT;
+  int    ZON;
   int    NTHREADS;
   double EREL, NEIGHBOR;
   int    MMAX, MTOP;
@@ -82,7 +83,7 @@ int main(int argc, char *argv[])
       if (argv[i][0] == '-')
         switch (argv[i][1])
         { default:
-            ARG_FLAGS("vbpCN");
+            ARG_FLAGS("vbpCNz");
             break;
           case 'e':
             ARG_REAL(EREL)
@@ -139,6 +140,7 @@ int main(int argc, char *argv[])
     PON = flags['p'];
     CON = flags['C'];
     NON = flags['N'];
+    ZON = flags['z'];
 
     if (argc < 3 || argc > 4)
       { fprintf(stderr,"Usage: %s %s\n",Prog_Name,Usage[0]);
@@ -354,6 +356,8 @@ int main(int argc, char *argv[])
             fprintf(out," -C");
           if (NON)
             fprintf(out," -N");
+          if (ZON)
+            fprintf(out," -z");
           if (KINT != 20)
             fprintf(out," -k%d",KINT);
           if (TINT > 0)
