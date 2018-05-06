@@ -101,4 +101,4 @@ short symbolic reminder of what the block is doing.  For example,
 ```
 
 The files with the suffix .OPT are optional and need not be executed albeit we highly
-recommend that one run all the CHECK blocks.
+recommend that one run the CHECK block.
