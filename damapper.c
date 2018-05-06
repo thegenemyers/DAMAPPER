@@ -39,6 +39,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
 #include <sys/param.h>
 #if defined(BSD)
@@ -49,9 +50,9 @@
 #include "map.h"
 
 static char *Usage[] =
-  { "[-vbpCN] [-k<int(20)>] [-t<int>] [-M<int>] [-T<int(4)>]",
-    "         [-e<double(.85)] [-s<int(100)>] [-n<double(1.00)>]",
-    "         [-m<track>]+  <reference:dam> <reads:db> ...",
+  { "[-vbpzCN] [-k<int(20)>] [-t<int>] [-M<int>] [-T<int(4)>] [-P<dir(/tmp)>]",
+    "          [-e<double(.85)] [-s<int(100)>] [-n<double(1.00)>]",
+    "          [-m<track>]+  <reference:dam> <reads:db> ...",
   };
 
 int     VERBOSE;   //   Globally visible to map.c
@@ -59,6 +60,8 @@ int     BIASED;
 int     PROFILE;
 int     SPACING;
 double  BEST_TIE;
+char   *SORT_PATH;
+
 uint64  MEM_LIMIT;
 uint64  MEM_PHYSICAL;
 
@@ -258,14 +261,14 @@ static DAZZ_TRACK *merge_tracks(DAZZ_DB *block, int mtop, int64 nsize)
 
   ntrack = (DAZZ_TRACK *) Malloc(sizeof(DAZZ_TRACK),"Allocating merged track");
   if (ntrack == NULL)
-    exit (1);
+    Clean_Exit(1);
   ntrack->name = Strdup("merge","Allocating merged track");
   ntrack->anno = anno = (int64 *) Malloc(sizeof(int64)*(block->nreads+1),"Allocating merged track");
   ntrack->data = data = (int *) Malloc(sizeof(int)*nsize,"Allocating merged track");
   ntrack->size = sizeof(int);
   ntrack->next = NULL;
   if (anno == NULL || data == NULL || ntrack->name == NULL)
-    exit (1);
+    Clean_Exit(1);
 
   { DAZZ_TRACK *track;
     int         i;
@@ -341,7 +344,7 @@ static int read_DB(DAZZ_DB *block, char *name, char **mask, int *mstat, int mtop
 
   isdam = Open_DB(name,block);
   if (isdam < 0)
-    exit (1);
+    Clean_Exit(1);
 
   for (i = 0; i < mtop; i++)
     { status = Check_Track(block,mask[i],&kind);
@@ -397,7 +400,7 @@ static int read_DB(DAZZ_DB *block, char *name, char **mask, int *mstat, int mtop
         if (block->reads[i].rlen < kmer)
           { fprintf(stderr,"%s: Block %s contains reads < %dbp long !  Run DBsplit.\n",
                            Prog_Name,name,kmer);
-            exit (1);
+            Clean_Exit(1);
           }
     }
 
@@ -437,7 +440,7 @@ static DAZZ_DB *complement_DB(DAZZ_DB *block, int inplace)
   else
     { seq  = (char *) Malloc(block->reads[nreads].boff+1,"Allocating dazzler sequence block");
       if (seq == NULL)
-        exit (1);
+        Clean_Exit(1);
       *seq++ = 4;
       memmove(seq,block->bases,block->reads[nreads].boff);
       *cblock = *block;
@@ -483,11 +486,11 @@ static DAZZ_DB *complement_DB(DAZZ_DB *block, int inplace)
             trg  = (DAZZ_TRACK *) Malloc(sizeof(DAZZ_TRACK),
                                          "Allocating dazzler interval track header");
             if (data == NULL || trg == NULL || anno == NULL)
-              exit (1);
+              Clean_Exit(1);
 
             trg->name = Strdup(src->name,"Copying track name");
             if (trg->name == NULL)
-              exit (1);
+              Clean_Exit(1);
 
             trg->size = 4;
             trg->anno = (void *) anno;
@@ -516,20 +519,33 @@ static DAZZ_DB *complement_DB(DAZZ_DB *block, int inplace)
   return (cblock);
 }
 
-static char *CommandBuffer(char *aname, char *bname)
+static char *CommandBuffer(char *aname, char *bname, char *spath)
 { static char *cat = NULL;
   static int   max = -1;
   int len;
 
-  len = 2*(strlen(aname) + strlen(bname)) + 200;
+  len = 2*(strlen(aname) + strlen(bname) + strlen(spath)) + 200;
   if (len > max)
     { max = ((int) (1.2*len)) + 100;
       if ((cat = (char *) realloc(cat,max+1)) == NULL)
         { fprintf(stderr,"%s: Out of memory (Making path name)\n",Prog_Name);
-          exit (1);
+          Clean_Exit(1);
         }
     }
   return (cat);
+}
+
+void Clean_Exit(int val)
+{ char *command;
+
+  command = CommandBuffer("","",SORT_PATH);
+  sprintf(command,"rm -r %s",SORT_PATH);
+  if (system(command) != 0)
+    { fprintf(stderr,"%s: Command Failed:\n%*s      %s\n",
+                     Prog_Name,(int) strlen(Prog_Name),"",command);
+      exit (1);
+    }
+  exit (val);
 }
 
 int main(int argc, char *argv[])
@@ -550,12 +566,14 @@ int main(int argc, char *argv[])
   int    MAX_REPS;
   double AVE_ERROR;
   int    NTHREADS;
+  int    MAP_ORDER;
   int    MMAX, MTOP, *MSTAT;
   char **MASK;
 
   { int    i, j, k;
     int    flags[128];
     char  *eptr;
+    DIR   *dirp;
 
     ARG_INIT("damapper")
 
@@ -565,6 +583,7 @@ int main(int argc, char *argv[])
     SPACING   = 100;       //   Globally visible to map.c
     BEST_TIE  = 1.0;
     NTHREADS  = 4;
+    SORT_PATH = "/tmp";
 
     MEM_PHYSICAL = getMemorySize();
     MEM_LIMIT    = MEM_PHYSICAL;
@@ -585,7 +604,7 @@ int main(int argc, char *argv[])
       if (argv[i][0] == '-')
         switch (argv[i][1])
         { default:
-            ARG_FLAGS("vbpCN")
+            ARG_FLAGS("vbpzCN")
             break;
           case 'e':
             ARG_REAL(AVE_ERROR)
@@ -633,6 +652,14 @@ int main(int argc, char *argv[])
               MEM_LIMIT = limit * 0x40000000ll;
               break;
             }
+          case 'P':
+            SORT_PATH = argv[i]+2;
+            if ((dirp = opendir(SORT_PATH)) == NULL)
+              { fprintf(stderr,"%s: -P option: cannot open directory %s\n",Prog_Name,SORT_PATH);
+                exit (1);
+              }
+            closedir(dirp);
+            break;
           case 'T':
             ARG_POSITIVE(NTHREADS,"Number of threads")
             break;
@@ -646,11 +673,33 @@ int main(int argc, char *argv[])
     PROFILE   = flags['p'];
     COVER     = flags['C'];
     NOMAP     = flags['N'];
+    MAP_ORDER = 1-flags['z'];
 
     if (argc <= 2)
       { fprintf(stderr,"Usage: %s %s\n",Prog_Name,Usage[0]);
         fprintf(stderr,"       %*s %s\n",(int) strlen(Prog_Name),"",Usage[1]);
         fprintf(stderr,"       %*s %s\n",(int) strlen(Prog_Name),"",Usage[2]);
+        fprintf(stderr,"\n");
+        fprintf(stderr,"      -k: k-mer size (must be <= 32).\n");
+        fprintf(stderr,"      -t: Ignore k-mers that occur >= -t times in a block.\n");
+        fprintf(stderr,"      -M: Use only -M GB of memory by ignoring most frequent k-mers.\n");
+        fprintf(stderr,"\n");
+        fprintf(stderr,"      -e: Look for alignments with -e percent similarity.\n");
+        fprintf(stderr,"      -s: Use -s as the trace point spacing for encoding alignments.\n");
+        fprintf(stderr,"      -n: Output all matches within this %% of the best\n");
+        fprintf(stderr,"\n");
+        fprintf(stderr,"      -T: Use -T threads.\n");
+        fprintf(stderr,"      -P: Do sorts and merges in directory -P.\n");
+        fprintf(stderr,"      -m: Soft mask the blocks with the specified mask.\n");
+        fprintf(stderr,"      -b: For AT/GC biased data, compensate k-mer counts (deprecated).\n");
+        fprintf(stderr,"\n");
+        fprintf(stderr,"      -v: Verbose mode, output statistics as proceed.\n");
+        fprintf(stderr,"      -z: sort .las by A,B-read pairs (overlap piles)\n");
+        fprintf(stderr,"          off => sort .las by A-read,A-position pairs");
+        fprintf(stderr," (default for mapping)\n");
+        fprintf(stderr,"      -p: Output repeat profile track\n");
+        fprintf(stderr,"      -C: Output reference vs reads .las.\n");
+        fprintf(stderr,"      -N: Do not output reads vs reference .las.\n");
         exit (1);
       }
 
@@ -749,6 +798,21 @@ int main(int argc, char *argv[])
       exit (1);
     }
 
+  // Create directory in SORT_PATH for file operations
+
+  { char *newpath;
+
+    newpath = (char *) Malloc(strlen(SORT_PATH)+30,"Allocating sort path");
+    if (newpath == NULL)
+      exit (1);
+    sprintf(newpath,"%s/damapper.%d",SORT_PATH,getpid());
+    if (mkdir(newpath,S_IRWXU) !=  0)
+      { fprintf(stderr,"%s: Could not create directory %s\n",Prog_Name,newpath);
+        exit (1);
+      }
+    SORT_PATH = newpath;
+  }
+
   //  Compare reads in subsequent argument to the reference in both orientations
 
   { int i, j, k;
@@ -830,40 +894,40 @@ int main(int argc, char *argv[])
         free(bindex);
         Close_DB(bblock);
 
-        command = CommandBuffer(aroot,broot);
+        command = CommandBuffer(aroot,broot,SORT_PATH);
+
+#define SYSTEM_CHECK(command)                                           \
+ if (VERBOSE)                                                           \
+   printf("%s\n",command);                                              \
+ if (system(command) != 0)                                              \
+   { fprintf(stderr,"\n%s: Command Failed:\n%*s      %s\n",             \
+                    Prog_Name,(int) strlen(Prog_Name),"",command);      \
+     Clean_Exit(1);                                                     \
+   }
 
         if ((mflag & FLAG_DOA) != 0)
-          { sprintf(command,"LAsort -a /tmp/%s.%s.M*.las",broot,aroot);
-            if (VERBOSE)
-              printf("\n%s\n",command);
-            system(command);
-            sprintf(command,"LAcat /tmp/%s.%s.M#.S >%s.%s.las",broot,aroot,broot,aroot);
-            if (VERBOSE)
-              printf("%s\n",command);
-            system(command);
-            sprintf(command,"rm /tmp/%s.%s.M*.las",broot,aroot);
-            if (VERBOSE)
-              printf("%s\n",command);
-            system(command);
+          { sprintf(command,"LAsort %s %s %s/%s.%s.M%c.las",VERBOSE?"-v":"",
+                            MAP_ORDER?"-a":"",SORT_PATH,broot,aroot,BLOCK_SYMBOL);
+            SYSTEM_CHECK(command)
+
+            sprintf(command,"LAcat %s %s/%s.%s.M%c.S >%s.%s.las",VERBOSE?"-v":"",
+                            SORT_PATH,broot,aroot,BLOCK_SYMBOL,broot,aroot);
+            SYSTEM_CHECK(command)
           }
+
         if ((mflag & FLAG_DOB) != 0)
-          { sprintf(command,"LAsort -a /tmp/%s.%s.R*.las",aroot,broot);
-            if (VERBOSE)
-              printf("\n%s\n",command);
-            system(command);
-            sprintf(command,"LAmerge -a %s.%s /tmp/%s.%s.R*.S.las",aroot,broot,aroot,broot);
-            if (VERBOSE)
-              printf("%s\n",command);
-            system(command);
-            sprintf(command,"rm /tmp/%s.%s.R*.las",aroot,broot);
-            if (VERBOSE)
-              printf("%s\n",command);
-            system(command);
+          { sprintf(command,"LAsort %s %s %s/%s.%s.R%c.las",VERBOSE?"-v":"",
+                            MAP_ORDER?"-a":"",SORT_PATH,aroot,broot,BLOCK_SYMBOL);
+            SYSTEM_CHECK(command)
+
+            sprintf(command,"LAmerge %s %s %s.%s %s/%s.%s.R%c.S.las",VERBOSE?"-v":"",
+                            MAP_ORDER?"-a":"",aroot,broot,SORT_PATH,aroot,broot,BLOCK_SYMBOL);
+            SYSTEM_CHECK(command)
           }
 
         free(broot);
       }
   }
 
-  exit (0);
+  Clean_Exit(0);
 }

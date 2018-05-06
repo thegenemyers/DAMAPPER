@@ -19,23 +19,38 @@
 
 #include "DB.h"
 
-#undef  LSF  //  define if want a directly executable LSF script
+#undef  LSF    //  define if want a directly executable LSF script
+#undef  SLURM  //  define if want a directly executable SLURM script
 
 static char *Usage[] =
-  { "[-vbpCN] [-k<int(20)>] [-t<int>] [-M<int>] [-e<double(.85)] [-s<int(100)]",
-    "         [-n<double(1.)] [-m<track>]+ [-B<int( 4)>] [-T<int(4)>] [-f<name>]",
-    "         <ref:db|dam> <reads:db|dam> [<first:int>[-<last:int>]]"
+  { "[-vbpzCN] [-k<int(20)>] [-t<int>] [-M<int>] [-e<double(.85)] [-s<int(100)]",
+    "          [-n<double(1.)] [-m<track>]+ [-B<int( 4)>] [-T<int(4)>] [-f<name>]",
+    "          <ref:db|dam> <reads:db|dam> [<first:int>[-<last:int>]]"
   };
 
-#define LSF_ALIGN "bsub -q medium -n 4 -o DAMAPPER.out -e DAMAPPER.err -R span[hosts=1] -J align#%d"
-#define LSF_SORT "bsub -q short -n 12 -o SORT.MAP.out -e SORT.MAP.err -R span[hosts=1] -J sort#%d"
+#ifdef LSF
+
+#define HPC
+
+#define HPC_ALIGN "bsub -q medium -n 4 -o DAMAPPER.out -e DAMAPPER.err -R span[hosts=1] -J map#%d"
+
+#endif
+
+#ifdef SLURM
+
+#define HPC
+
+#define HPC_ALIGN \
+          "srun -p batch -n 1 -c %d --mem_per_cpu=%d -o DALIGNER.out -e DALIGNER.err -J map#%d"
+
+#endif
 
 int main(int argc, char *argv[])
 { int   nblocks2;
   int   useblock2;
   int   usepath1, usepath2;
   int   fblock, lblock;
-#ifdef LSF
+#ifdef HPC
   int   jobid;
 #endif
 
@@ -46,7 +61,7 @@ int main(int argc, char *argv[])
 
   int    FORWARD, REVERSE;
   int    BUNIT;
-  int    VON, BON, PON, CON, NON;
+  int    VON, BON, PON, CON, NON, ZON;
   int    TINT, KINT, SINT, MINT;
   int    NTHREADS;
   double EREL, NEIGHBOR;
@@ -82,7 +97,7 @@ int main(int argc, char *argv[])
       if (argv[i][0] == '-')
         switch (argv[i][1])
         { default:
-            ARG_FLAGS("vbpCN");
+            ARG_FLAGS("vbpzCN");
             break;
           case 'e':
             ARG_REAL(EREL)
@@ -137,6 +152,7 @@ int main(int argc, char *argv[])
     VON = flags['v'];
     BON = flags['b'];
     PON = flags['p'];
+    ZON = flags['z'];
     CON = flags['C'];
     NON = flags['N'];
 
@@ -144,6 +160,32 @@ int main(int argc, char *argv[])
       { fprintf(stderr,"Usage: %s %s\n",Prog_Name,Usage[0]);
         fprintf(stderr,"       %*s %s\n",(int) strlen(Prog_Name),"",Usage[1]);
         fprintf(stderr,"       %*s %s\n",(int) strlen(Prog_Name),"",Usage[2]);
+        fprintf(stderr,"\n");
+        fprintf(stderr,"     Passed through to damapper.\n");
+        fprintf(stderr,"      -k: k-mer size (must be <= 32).\n");
+        fprintf(stderr,"      -t: Ignore k-mers that occur >= -t times in a block.\n");
+        fprintf(stderr,"      -M: Use only -M GB of memory by ignoring most frequent k-mers.\n");
+        fprintf(stderr,"\n");
+        fprintf(stderr,"      -e: Look for alignments with -e percent similarity.\n");
+        fprintf(stderr,"      -s: Use -s as the trace point spacing for encoding alignments.\n");
+        fprintf(stderr,"      -n: Output all matches within this %% of the best\n");
+        fprintf(stderr,"\n");
+        fprintf(stderr,"      -T: Use -T threads.\n");
+        fprintf(stderr,"      -P: Do sorts and merges in directory -P.\n");
+        fprintf(stderr,"      -m: Soft mask the blocks with the specified mask.\n");
+        fprintf(stderr,"      -b: For AT/GC biased data, compensate k-mer counts (deprecated).\n");
+        fprintf(stderr,"\n");
+        fprintf(stderr,"      -z: sort .las by A,B-read pairs (overlap piles)\n");
+        fprintf(stderr,"          off => sort .las by A-read,A-position pairs");
+        fprintf(stderr," (default for mapping)\n");
+        fprintf(stderr,"      -p: Output repeat profile track\n");
+        fprintf(stderr,"      -C: Output reference vs reads .las.\n");
+        fprintf(stderr,"      -N: Do not output reads vs reference .las.\n");
+        fprintf(stderr,"\n");
+        fprintf(stderr,"     Script control.\n");
+        fprintf(stderr,"      -v: Verbose mode, output statistics as proceed.\n");
+        fprintf(stderr,"      -B: # of block compares per daligner job\n");
+        fprintf(stderr,"      -f: Place script bundles in separate files with prefix <name>\n");
         exit (1);
       }
 
@@ -329,7 +371,7 @@ int main(int argc, char *argv[])
 
     fprintf(out,"# Damapper jobs (%d)\n",njobs);
 
-#ifdef LSF
+#ifdef HPC
     jobid = 1;
 #endif
     { int bits;
@@ -339,8 +381,15 @@ int main(int argc, char *argv[])
       low  = fblock;
       for (j = 1; j <= bits; j++)
         {
-#ifdef LSF
-          fprintf(out,LSF_ALIGN,jobid++);
+#ifdef LSM
+          fprintf(out,HPC_ALIGN,jobid++);
+          fprintf(out," \"");
+#endif
+#ifdef SLURM
+          if (MINT >= 0)
+            fprintf(out,HPC_ALIGN,NTHREADS,(MINT*1024)/NTHREADS,jobid++);
+          else
+            fprintf(out,HPC_ALIGN,NTHREADS,(16*1024)/NTHREADS,jobid++);
           fprintf(out," \"");
 #endif
           fprintf(out,"damapper");
@@ -350,6 +399,8 @@ int main(int argc, char *argv[])
             fprintf(out," -b");
           if (PON)
             fprintf(out," -p");
+          if (ZON)
+            fprintf(out," -z");
           if (CON)
             fprintf(out," -C");
           if (NON)
@@ -386,7 +437,7 @@ int main(int argc, char *argv[])
                 fprintf(out," %s/%s",pwd2,root2);
               else
                 fprintf(out," %s",root2);
-#ifdef LSF
+#ifdef HPC
           fprintf(out,"\"");
 #endif
           fprintf(out,"\n");
@@ -405,51 +456,49 @@ int main(int argc, char *argv[])
     fprintf(out,"# Check all .las files (optional but recommended)\n");
 
     if (FORWARD)
-      for (j = fblock; j <= lblock; j++)
-        { fprintf(out,"LAcheck -vS");
-          if (usepath2)
-            fprintf(out," %s/%s",pwd2,root2);
+      { fprintf(out,"LAcheck -v%sS",ZON?"":"a");
+        if (usepath2)
+          fprintf(out," %s/%s",pwd2,root2);
+        else
+          fprintf(out," %s",root2);
+        if (usepath1)
+          fprintf(out," %s/%s",pwd1,root1);
+        else
+          fprintf(out," %s",root1);
+        if (usepath2)
+          if (useblock2)
+            fprintf(out," %s/%s.%c%d-%d.%s",pwd2,root2,BLOCK_SYMBOL,fblock,lblock,root1);
           else
-            fprintf(out," %s",root2);
-          if (usepath1)
-            fprintf(out," %s/%s",pwd1,root1);
+            fprintf(out," %s/%s.%s",pwd2,root2,root1);
+        else
+          if (useblock2)
+            fprintf(out," %s.%c%d-%d.%s",root2,BLOCK_SYMBOL,fblock,lblock,root1);
           else
-            fprintf(out," %s",root1);
-          if (usepath2)
-            if (useblock2)
-              fprintf(out," %s/%s.%d.%s",pwd2,root2,j,root1);
-            else
-              fprintf(out," %s/%s.%s",pwd2,root2,root1);
-          else
-            if (useblock2)
-              fprintf(out," %s.%d.%s",root2,j,root1);
-            else
-              fprintf(out," %s.%s",root2,root1);
-          fprintf(out,"\n");
-        }
+            fprintf(out," %s.%s",root2,root1);
+        fprintf(out,"\n");
+      }
     if (REVERSE)
-      for (j = fblock; j <= lblock; j++)
-        { fprintf(out,"LAcheck -vS");
-          if (usepath1)
-            fprintf(out," %s/%s",pwd1,root1);
+      { fprintf(out,"LAcheck -v%sS",ZON?"":"a");
+        if (usepath1)
+          fprintf(out," %s/%s",pwd1,root1);
+        else
+          fprintf(out," %s",root1);
+        if (usepath2)
+          fprintf(out," %s/%s",pwd2,root2);
+        else
+          fprintf(out," %s",root2);
+        if (usepath2)
+          if (useblock2)
+            fprintf(out," %s/%s.%s.%c%d-%d",pwd2,root1,root2,BLOCK_SYMBOL,fblock,lblock);
           else
-            fprintf(out," %s",root1);
-          if (usepath2)
-            fprintf(out," %s/%s",pwd2,root2);
+            fprintf(out," %s/%s.%s",pwd2,root1,root2);
+        else
+          if (useblock2)
+            fprintf(out," %s.%s.%c%d-%d",root1,root2,BLOCK_SYMBOL,fblock,lblock);
           else
-            fprintf(out," %s",root2);
-          if (usepath2)
-            if (useblock2)
-              fprintf(out," %s/%s.%s.%d",pwd2,root1,root2,j);
-            else
-              fprintf(out," %s/%s.%s",pwd2,root1,root2);
-          else
-            if (useblock2)
-              fprintf(out," %s.%s.%d",root1,root2,j);
-            else
-              fprintf(out," %s.%s",root1,root2);
-          fprintf(out,"\n");
-        }
+            fprintf(out," %s.%s",root1,root2);
+        fprintf(out,"\n");
+      }
 
     if (ONAME != NULL)
       fclose(out);

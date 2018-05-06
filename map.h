@@ -19,6 +19,7 @@ extern int    VERBOSE;
 extern int    PROFILE;
 extern int    SPACING;
 extern double BEST_TIE;
+extern char  *SORT_PATH;
 
 extern uint64 MEM_LIMIT;
 extern uint64 MEM_PHYSICAL;
@@ -35,5 +36,7 @@ void Match_Filter(DAZZ_DB *ablock, DAZZ_DB *bblock,
 
 void Reporter(char *aname, DAZZ_DB *ablock, char *bname, DAZZ_DB *bblock,
               Align_Spec *asettings, int mflag);
+
+void Clean_Exit(int val);
 
 #endif

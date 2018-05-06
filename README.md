@@ -13,14 +13,16 @@ rate and occational large drop out regions where the quality is exceedingly
 low.
 
 ```
-1. damapper [-vbpCN] [-k<int(20)>] [-t<int>] [-M<int>] [-T<int(4)>]
-                     [-e<double(.85)] [-s<int(100)>] [-n<double(1.)>]
-                     [-m<track>]+ <ref:db|dam> <reads:db|dam> ...
+1. damapper [-vbpzCN] [-k<int(20)>] [-t<int>] [-M<int>] [-T<int(4)>]
+                      [-e<double(.85)] [-s<int(100)>] [-n<double(1.)>]
+                      [-m<track>]+ <ref:db|dam> <reads:db|dam> ...
 ```
 
 Search the reference data base \<ref\> for the best matches to each read in the list of
 databases or database blocks \<reads\>.  The parameters -v, -b, -k, -t, -M, -T -e, -s,
-and -m are exactly as for the daligner (see here).  Matches at the expected correlation
+and -m are exactly as for the daligner (see here).  The parameter -z asks that LAs are
+sorted in pile order as opposed to map order (see the -a option of daligner for which this
+is the negation).  Matches at the expected correlation
 given by -e are sought and unlike daligner they can be of any length (i.e. short).
 Alignments at much lower rates are not forced in order to report a single matching
 interval, but rather when a read has bad stretches, the result is a chain of local
@@ -60,7 +62,7 @@ not have a unique location in a reference sequence due to its being entirely or 
 entirely repetitive.
 
 ```
-2. HPC.damapper [-vbpCN]
+2. HPC.damapper [-vbpzCN]
                 [-k<int(20)>] [-t<int>] [-M<int>] [-e<double(.85)] [-s<int(100)]
                 [-n<double(1.)>] [-m<track>]+ [-B<int(4)>] [-T<int(4)>] [-f<name>]
                 <ref:db|dam> <reads:db|dam> [<first:int>[-<last:int>]]

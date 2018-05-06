@@ -844,7 +844,7 @@ void *Sort_Kmers(DAZZ_DB *block, int *len)
 
       NormShift = (int *) Malloc(sizeof(int)*(Kmer+1),"Allocating Sort_Kmers bias shift");
       if (NormShift == NULL)
-        exit (1);
+        Clean_Exit(1);
       for (i = 0; i <= Kmer; i++)
         NormShift[i] = Kshift - 2*i;
       LogNorm = 10000 * Kmer;
@@ -870,7 +870,7 @@ void *Sort_Kmers(DAZZ_DB *block, int *len)
       trg = (KmerPos *) Malloc(sizeof(KmerPos)*(kmers+2),"Allocating Sort_Kmers vectors");
     }
   if (src == NULL || trg == NULL)
-    exit (1);
+    Clean_Exit(1);
 
   if (VERBOSE)
     { printf("\n   Kmer count = ");
@@ -1682,7 +1682,7 @@ static void *chain_thread(void *arg)
         { max  = FACTOR*((data->aend - data->abeg) + 1);				\
           base = (Type *) Malloc(sizeof(Type)*max,"Allocating free space");		\
           if (base == NULL)								\
-            exit (1);									\
+            Clean_Exit(1);								\
         }										\
       else										\
         base = data->base;								\
@@ -1702,7 +1702,7 @@ static void *chain_thread(void *arg)
   est  = (1.0*max*(data->aend-data->abeg)) / ((ar-data->abeg)+1.) + 2000;	\
   base = (Type *) Realloc(base,sizeof(Type)*est,"Reallocating free space");	\
   if (base == NULL)								\
-    exit (1);									\
+    Clean_Exit(1);								\
   for (i = max; i < est; i++)							\
     base[i].next = i+1;								\
   base[est-1].next = -1;							\
@@ -1754,7 +1754,7 @@ static void *chain_thread(void *arg)
 
     sbase = Malloc(sizeof(Splay)*(maxk+1),"Allocating splay free space\n");
     if (sbase == NULL)
-      exit (1);
+      Clean_Exit(1);
 
     cover = data->cover;
     comax = data->comax;
@@ -2263,7 +2263,7 @@ static void Fusion(Path *path1, int ap, Path *path2, Trace_Buffer *tbuf)
     { tbuf->max = 1.2*(tbuf->top+len) + 1000;
       tbuf->trace = (uint16 *) Realloc(tbuf->trace,sizeof(uint16)*tbuf->max,"Allocating paths");
       if (tbuf->trace == NULL)
-        exit (1);
+        Clean_Exit(1);
     }
 
   trace = tbuf->trace + tbuf->top;
@@ -2629,7 +2629,7 @@ static void *report_thread(void *arg)
 
   if (amatch == NULL || bmatch == NULL || linker == NULL ||
       perm == NULL || part == NULL || tbuf->trace == NULL)
-    exit (1);
+    Clean_Exit(1);
 
   cnt = data->cover;
   log = (uint8 *) data->cover;
@@ -2715,12 +2715,12 @@ static void *report_thread(void *arg)
                               amatch = Realloc(amatch,sizeof(Overlap)*Omax,
                                                "Reallocating match vector");
                               if (amatch == NULL)
-                                exit (1);
+                                Clean_Exit(1);
                               if (MR_doB)
                                 { bmatch = Realloc(bmatch,sizeof(Overlap)*Omax,
                                                           "Reallocating match vector");
                                   if (bmatch == NULL)
-                                    exit (1);
+                                    Clean_Exit(1);
                                 }
                             }
 
@@ -2734,7 +2734,7 @@ static void *report_thread(void *arg)
                               tbuf->trace = Realloc(tbuf->trace,sizeof(short)*tbuf->max,
                                                     "Reallocating trace vector");
                               if (tbuf->trace == NULL)
-                                exit (1);
+                                Clean_Exit(1);
                             }
                           amatch[novl].path.trace = (void *) (tbuf->top);
                           memmove(tbuf->trace+tbuf->top,apath->trace,sizeof(short)*apath->tlen);
@@ -2751,7 +2751,7 @@ static void *report_thread(void *arg)
                                   tbuf->trace = Realloc(tbuf->trace,sizeof(short)*tbuf->max,
                                                         "Reallocating trace vector");
                                   if (tbuf->trace == NULL)
-                                    exit (1);
+                                    Clean_Exit(1);
                                 }
                               bmatch[novl].path.trace = (void *) (tbuf->top);
                               memmove(tbuf->trace+tbuf->top,bpath->trace,sizeof(short)*bpath->tlen);
@@ -2802,7 +2802,7 @@ static void *report_thread(void *arg)
           perm   = Realloc(perm,sizeof(Links *)*COmax,"Reallocating permutation vector");
           part   = Realloc(part,sizeof(Zones)*COmax,"Reallocating zones vector");
           if (linker == NULL || perm == NULL || part == NULL)
-            exit (1);
+            Clean_Exit(1);
         }
 
 #ifdef TEST_SELECT
@@ -2930,7 +2930,7 @@ static void *report_thread(void *arg)
                 if (MR_doA)
                   { amatch[p].path.trace = tbuf->trace + (uint64) (amatch[p].path.trace);
                     if (small)
-                      Compress_TraceTo8(amatch+p);
+                      Compress_TraceTo8(amatch+p,1);
                     if (p == b)
                       { amatch[p].flags |= START_FLAG;
                         if (best)
@@ -2950,7 +2950,7 @@ static void *report_thread(void *arg)
                     else
                       { bmatch[p].path.trace = tbuf->trace + (uint64) (bmatch[p].path.trace);
                         if (small)
-                          Compress_TraceTo8(bmatch+p);
+                          Compress_TraceTo8(bmatch+p,1);
                         if (p == b)
                           { bmatch[p].flags |= START_FLAG;
                             if (best)
@@ -2986,7 +2986,7 @@ static void *report_thread(void *arg)
                 for (p = b; 1; p = linker[p].link)
                   { bmatch[p].path.trace = tbuf->trace + (uint64) (bmatch[p].path.trace);
                     if (small)
-                      Compress_TraceTo8(bmatch+p);
+                      Compress_TraceTo8(bmatch+p,1);
                     if (p == b)
                       { bmatch[p].flags |= START_FLAG;
                         if (best)
@@ -3211,7 +3211,7 @@ void Match_Filter(DAZZ_DB *ablock, DAZZ_DB *bblock,
                 fprintf(stderr," reduce block size or increase allocation\n");
               }
             fflush(stderr);
-            exit (1);
+            Clean_Exit(1);
           }
         if (limit < 10)
           { fprintf(stderr,"\nWarning: Sensitivity hampered by low ");
@@ -3264,7 +3264,7 @@ void Match_Filter(DAZZ_DB *ablock, DAZZ_DB *bblock,
     khit = work2 = (SeedPair *) Malloc(sizeof(SeedPair)*(nhits+1),
                                         "Allocating damapper hit vectors");
     if (hhit == NULL || khit == NULL || bsort == NULL)
-      exit (1);
+      Clean_Exit(1);
 
     MG_blist = bsort;
     MG_hits  = khit;
@@ -3405,7 +3405,7 @@ static char *NameBuffer(char *aname, char *bname)
     { max = ((int) (1.2*len)) + 100;
       if ((cat = (char *) realloc(cat,max+1)) == NULL)
         { fprintf(stderr,"%s: Out of memory (Making path name)\n",Prog_Name);
-          exit (1);
+          Clean_Exit(1);
         }
     }
   return (cat);
@@ -3435,16 +3435,16 @@ void Reporter(char *aname, DAZZ_DB *ablock, char *bname, DAZZ_DB *bblock,
   for (i = 0; i < NTHREADS; i++)
     { parmr[i].work  = New_Work_Data();
       if (mflag & 0x1)
-        { sprintf(fname,"/tmp/%s.%s.M%d.las",aname,bname,i+1);
+        { sprintf(fname,"%s/%s.%s.M%d.las",SORT_PATH,aname,bname,i+1);
           parmr[i].afile = Fopen(fname,"w");
           if (parmr[i].afile == NULL)
-            exit (1);
+            Clean_Exit(1);
         }
       if (mflag & 0x2)
-        { sprintf(fname,"/tmp/%s.%s.R%d.las",bname,aname,i+1);
+        { sprintf(fname,"%s/%s.%s.R%d.las",SORT_PATH,bname,aname,i+1);
           parmr[i].bfile = Fopen(fname,"w");
           if (parmr[i].bfile == NULL)
-            exit (1);
+            Clean_Exit(1);
         }
     }
 
