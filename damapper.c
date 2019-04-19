@@ -360,7 +360,7 @@ static int read_DB(DAZZ_DB *block, char *name, char **mask, int *mstat, int mtop
             mstat[i] = status;
         }
       if (status == 0 && kind == MASK_TRACK)
-        Load_Track(block,mask[i]);
+        Open_Track(block,mask[i]);
     }
 
   Trim_DB(block);
@@ -375,7 +375,9 @@ static int read_DB(DAZZ_DB *block, char *name, char **mask, int *mstat, int mtop
       if (status < 0 || kind != MASK_TRACK)
         continue;
       stop += 1;
-      track = Load_Track(block,mask[i]);
+      track = Open_Track(block,mask[i]);
+
+      Load_All_Track_Data(track);
 
       anno = (int64 *) (track->anno); 
       for (j = 0; j <= block->nreads; j++)
@@ -390,7 +392,7 @@ static int read_DB(DAZZ_DB *block, char *name, char **mask, int *mstat, int mtop
       track = merge_tracks(block,stop,nsize);
 
       while (block->tracks != NULL)
-        Close_Track(block,block->tracks->name);
+        Close_Track(block,block->tracks);
 
       block->tracks = track;
     }
@@ -404,7 +406,7 @@ static int read_DB(DAZZ_DB *block, char *name, char **mask, int *mstat, int mtop
           }
     }
 
-  Read_All_Sequences(block,0);
+  Load_All_Reads(block,0);
 
   return (isdam);
 }
