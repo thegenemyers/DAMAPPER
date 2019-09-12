@@ -13,13 +13,13 @@ rate and occational large drop out regions where the quality is exceedingly
 low.
 
 ```
-1. damapper [-vbpzCN] [-k<int(20)>] [-t<int>] [-M<int>] [-T<int(4)>]
-                      [-e<double(.85)] [-s<int(100)>] [-n<double(1.)>]
-                      [-m<track>]+ <ref:db|dam> <reads:db|dam> ...
+1. damapper [-vpzCN] [-k<int(20)>] [-t<int>] [-M<int>] [-T<int(4)>]
+                     [-e<double(.85)] [-s<int(100)>] [-n<double(1.)>]
+                     [-m<track>]+ <ref:db|dam> <reads:db|dam> ...
 ```
 
 Search the reference data base \<ref\> for the best matches to each read in the list of
-databases or database blocks \<reads\>.  The parameters -v, -b, -k, -t, -M, -T -e, -s,
+databases or database blocks \<reads\>.  The parameters -v, -k, -t, -M, -T -e, -s,
 and -m are exactly as for the daligner (see here).  The parameter -z asks that LAs are
 sorted in pile order as opposed to map order (see the -a option of daligner for which this
 is the negation).  Matches at the expected correlation

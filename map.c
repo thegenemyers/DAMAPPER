@@ -454,10 +454,6 @@ static Double *lex_sort(int bytes[16], Double *src, Double *trg, Lex_Arg *parmx)
  *
  ********************************************************************************************/
 
-static int *NormShift = NULL;
-static int  LogNorm, LogThresh;
-static int  LogBase[4];
-
 static DAZZ_DB    *TA_block;
 static KmerPos    *TA_list;
 static DAZZ_TRACK *TA_track;
@@ -586,165 +582,6 @@ static void *tuple_thread(void *arg)
   return (NULL);
 }
 
-static void *biased_tuple_thread(void *arg)
-{ Tuple_Arg  *data  = (Tuple_Arg *) arg;
-  DAZZ_READ  *reads = TA_block->reads;
-  int64      *kptr  = data->kptr;
-  KmerPos    *list  = TA_list;
-  int         i, j;
-  int         m, n;
-  char       *s;
-
-  n = data->tbeg;
-  i = data->rbeg;
-  m = data->tend;
-  j = data->rend;
-  s = ((char *) TA_block->bases) + reads[i].boff;
-
-  if (TA_track != NULL)
-    { int64     *anno1 = ((int64 *) (TA_track->anno)) + 1;
-      int       *point = (int *) (TA_track->data);
-      int        p, q;
-      int        io, jo;
-      int64      a, b, f; 
-      char      *s1;
-
-      io = n + i*Kmer - reads[i].boff;
-      jo = TA_block->maxlen;
-      q = 0;
-      f = anno1[i-1];
-      for (; i <= j; i++)
-        { if (i == j)
-            { jo = m + j*Kmer - reads[j].boff;
-              if (jo == 0)
-                continue;
-              jo += Kmer-1;
-            }
-          b = f;
-          f = anno1[i];
-          s1 = s+1;
-          for (a = b; a <= f; a += 2)
-            { if (a == b)
-                p = 0;
-              else
-                p = point[a-1];
-              if (a == f)
-                q = reads[i].rlen;
-              else
-                q = point[a];
-              if (p < io)
-                p = io;
-              if (q > jo)
-                q = jo;
-              if (p+Kmer <= q)
-                { int    x, k, z;
-                  uint64 c, d;
-
-                  c = 0;
-                  z = 0;
-                  k = 1;
-                  while (p < q)
-                    { x = s[p];
-                      z += LogBase[x];
-                      c  = ((c << 2) | x);
-                      while (z < LogNorm && k < Kmer)
-                        { if (++p >= q)
-                            break;
-                          k += 1;
-                          x  = s[p];
-                          z += LogBase[x];
-                          c  = ((c << 2) | x);
-                        }
-                      while (1)
-                        { int sc = z-LogBase[(int) s1[p-k]];
-                          if (sc < LogNorm) break;
-                          z  = sc;
-                          k -= 1;
-                        }
-                      if (z > LogThresh)
-                        { d = ((c << NormShift[k]) & Kmask);
-                          list[n].read = i;
-                          list[n].rpos = p;
-                          list[n].code = d;
-                          n += 1;
-                          kptr[d & BMASK] += 1;
-                        }
-                      p += 1;
-                      z -= LogBase[(int) s[p-k]];
-                    }
-                }
-            }
-          s += (q+1);
-          io = 0;
-	}
-    }
-
-  else
-    { int    p, q;
-      int    io;
-      char  *s1;
-
-      io = n + i*Kmer - reads[i].boff;
-      for (; i <= j; i++)
-        { s1 = s+1;
-          p  = io;
-          if (i == j)
-            q = m + j*Kmer + (Kmer-1) - reads[j].boff;
-          else
-            q = reads[i].rlen;
-          if (p+Kmer <= q)
-            { int    x, k, z;
-              uint64 c, d;
-
-              c = 0;
-              z = 0;
-              k = 1;
-              while (p < q)
-                { x = s[p];
-                  z += LogBase[x];
-                  c  = ((c << 2) | x);
-                  while (z < LogNorm && k < Kmer)
-                    { if (++p >= q)
-                        break;
-                      k += 1;
-                      x  = s[p];
-                      z += LogBase[x];
-                      c  = ((c << 2) | x);
-                    }
-                  while (1)
-                    { int sc = z-LogBase[(int) s1[p-k]];
-                      if (sc < LogNorm) break;
-                      z  = sc;
-                      k -= 1;
-                    }
-                  if (z > LogThresh)
-                    { d = ((c << NormShift[k]) & Kmask);
-                      list[n].read = i;
-                      list[n].rpos = p;
-                      list[n].code = d;
-                      n += 1;
-                      kptr[d & BMASK] += 1;
-                    }
-                  p += 1;
-                  z -= LogBase[(int) s[p-k]];
-                }
-            }
-          s += (q+1);
-          io = 0;
-        }
-    }
-
-  kptr[BMASK] += (data->fill = m-n);
-  while (n < m)
-    { list[n].code = 0xffffffffffffffffllu;
-      list[n].read = 0xffffffff;
-      list[n].rpos = 0xffffffff;
-      n += 1;
-    }
-
-  return (NULL);
-}
-
 static KmerPos *FR_src;
 static KmerPos *FR_trg;
 
@@ -839,22 +676,6 @@ void *Sort_Kmers(DAZZ_DB *block, int *len)
   for (i = 0; i < Kshift; i += 8)
     mersort[i>>3] = 1;
 
-  if (NormShift == NULL && BIASED)
-    { double scale;
-
-      NormShift = (int *) Malloc(sizeof(int)*(Kmer+1),"Allocating Sort_Kmers bias shift");
-      if (NormShift == NULL)
-        Clean_Exit(1);
-      for (i = 0; i <= Kmer; i++)
-        NormShift[i] = Kshift - 2*i;
-      LogNorm = 10000 * Kmer;
-      LogThresh = 10000 * (Kmer-MAX_BIAS);
-
-      scale = -10000. / log(4.);
-      for (i = 0; i < 4; i++)
-        LogBase[i] = (int) ceil( scale * log(block->freq[i]) );
-    }
-
   nreads = block->nreads;
   kmers  = block->reads[nreads].boff - Kmer * nreads;
 
@@ -894,19 +715,15 @@ void *Sort_Kmers(DAZZ_DB *block, int *len)
       parmt[i].rend = z = find_read(x,block->reads,nreads);
     }
 
-  if (BIASED)
-    for (i = 0; i < NTHREADS; i++)
-      pthread_create(threads+i,NULL,biased_tuple_thread,parmt+i);
-  else
-    for (i = 0; i < NTHREADS; i++)
-      pthread_create(threads+i,NULL,tuple_thread,parmt+i);
+  for (i = 0; i < NTHREADS; i++)
+    pthread_create(threads+i,NULL,tuple_thread,parmt+i);
 
   for (i = 0; i < NTHREADS; i++)
     pthread_join(threads[i],NULL);
 
   rez = (KmerPos *) lex_sort(mersort,(Double *) src,(Double *) trg,parmx);
 
-  if (BIASED || TA_track != NULL)
+  if (TA_track != NULL)
     for (i = 0; i < NTHREADS; i++)
       kmers -= parmt[i].fill;
 
@@ -977,7 +794,7 @@ void *Sort_Kmers(DAZZ_DB *block, int *len)
 #endif
 
   if (VERBOSE)
-    { if (TooFrequent < INT32_MAX || BIASED || TA_track != NULL)
+    { if (TooFrequent < INT32_MAX || TA_track != NULL)
         { printf("   Revised kmer count = ");
           Print_Number((int64) kmers,0,stdout);
           printf("\n");

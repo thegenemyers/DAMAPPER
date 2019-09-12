@@ -14,7 +14,6 @@
 #include "DB.h"
 #include "align.h"
 
-extern int    BIASED;
 extern int    VERBOSE;
 extern int    PROFILE;
 extern int    SPACING;

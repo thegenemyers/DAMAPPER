@@ -50,13 +50,12 @@
 #include "map.h"
 
 static char *Usage[] =
-  { "[-vbpzCN] [-k<int(20)>] [-t<int>] [-M<int>] [-T<int(4)>] [-P<dir(/tmp)>]",
-    "          [-e<double(.85)] [-s<int(100)>] [-n<double(1.00)>]",
-    "          [-m<track>]+  <reference:dam> <reads:db> ...",
+  { "[-vpzCN] [-k<int(20)>] [-t<int>] [-M<int>] [-T<int(4)>] [-P<dir(/tmp)>]",
+    "         [-e<double(.85)] [-s<int(100)>] [-n<double(1.00)>]",
+    "         [-m<track>]+  <reference:dam> <reads:db> ...",
   };
 
 int     VERBOSE;   //   Globally visible to map.c
-int     BIASED;
 int     PROFILE;
 int     SPACING;
 double  BEST_TIE;
@@ -72,7 +71,7 @@ uint64  MEM_PHYSICAL;
  *   I removed Windows options, reformated, and return int64 instead of size_t
  */
 
-static int64 getMemorySize()
+static int64 getMemorySize( )
 {
 #if defined(CTL_HW) && (defined(HW_MEMSIZE) || defined(HW_PHYSMEM64))
 
@@ -267,6 +266,7 @@ static DAZZ_TRACK *merge_tracks(DAZZ_DB *block, int mtop, int64 nsize)
   ntrack->data = data = (int *) Malloc(sizeof(int)*nsize,"Allocating merged track");
   ntrack->size = sizeof(int);
   ntrack->next = NULL;
+  ntrack->loaded = 1;
   if (anno == NULL || data == NULL || ntrack->name == NULL)
     Clean_Exit(1);
 
@@ -349,18 +349,18 @@ static int read_DB(DAZZ_DB *block, char *name, char **mask, int *mstat, int mtop
   for (i = 0; i < mtop; i++)
     { status = Check_Track(block,mask[i],&kind);
       if (status >= 0)
-        if (kind == MASK_TRACK)
-          mstat[i] = 0;
-        else
-          { if (mstat[i] != 0)
-              mstat[i] = -3;
-          }
-      else
-        { if (mstat[i] == -2)
-            mstat[i] = status;
+        { if (kind != MASK_TRACK)
+            { fprintf(stderr,"%s: %s track is not a mask track.\n",Prog_Name,mask[i]);
+              exit (1);
+            }
+          if (status == 0)
+            Open_Track(block,mask[i]);
+          mstat[i] = 1;
         }
-      if (status == 0 && kind == MASK_TRACK)
-        Open_Track(block,mask[i]);
+      else if (status == -1)
+        { printf("%s: Warning: %s track not sync'd with db %s, ignored.\n",
+                      Prog_Name,mask[i],name);
+        }
     }
 
   Trim_DB(block);
@@ -372,11 +372,11 @@ static int read_DB(DAZZ_DB *block, char *name, char **mask, int *mstat, int mtop
       int         j;
 
       status = Check_Track(block,mask[i],&kind);
-      if (status < 0 || kind != MASK_TRACK)
+      if (status < 0)
         continue;
+
       stop += 1;
       track = Open_Track(block,mask[i]);
-
       Load_All_Track_Data(track);
 
       anno = (int64 *) (track->anno); 
@@ -400,8 +400,8 @@ static int read_DB(DAZZ_DB *block, char *name, char **mask, int *mstat, int mtop
   if (block->cutoff < kmer)
     { for (i = 0; i < block->nreads; i++)
         if (block->reads[i].rlen < kmer)
-          { fprintf(stderr,"%s: Block %s contains reads < %dbp long !  Run DBsplit.\n",
-                           Prog_Name,name,kmer);
+          { fprintf(stderr,"%s: Block %s contains reads < %dbp long !  Run DBsplit -x%d\n",
+                           Prog_Name,name,kmer,kmer);
             Clean_Exit(1);
           }
     }
@@ -606,7 +606,7 @@ int main(int argc, char *argv[])
       if (argv[i][0] == '-')
         switch (argv[i][1])
         { default:
-            ARG_FLAGS("vbpzCN")
+            ARG_FLAGS("vpzCN")
             break;
           case 'e':
             ARG_REAL(AVE_ERROR)
@@ -671,7 +671,6 @@ int main(int argc, char *argv[])
     argc = j;
 
     VERBOSE   = flags['v'];   //  Globally declared in map.h
-    BIASED    = flags['b'];
     PROFILE   = flags['p'];
     COVER     = flags['C'];
     NOMAP     = flags['N'];
@@ -693,7 +692,6 @@ int main(int argc, char *argv[])
         fprintf(stderr,"      -T: Use -T threads.\n");
         fprintf(stderr,"      -P: Do sorts and merges in directory -P.\n");
         fprintf(stderr,"      -m: Soft mask the blocks with the specified mask.\n");
-        fprintf(stderr,"      -b: For AT/GC biased data, compensate k-mer counts (deprecated).\n");
         fprintf(stderr,"\n");
         fprintf(stderr,"      -v: Verbose mode, output statistics as proceed.\n");
         fprintf(stderr,"      -z: sort .las by A,B-read pairs (overlap piles)\n");
@@ -712,7 +710,7 @@ int main(int argc, char *argv[])
         mflag = FLAG_DOA | FLAG_DOB;
     else
       if (NOMAP)
-        { fprintf(stderr,"%s: Cannot specify both C and N flags together\n",Prog_Name);
+        { fprintf(stderr,"%s: Cannot specify N flag without C also\n",Prog_Name);
           exit (1);
         }
       else
@@ -823,12 +821,13 @@ int main(int argc, char *argv[])
     broot  = NULL;
     for (i = 2; i < argc; i++)
       { bfile = argv[i];
-        isdam = read_DB(bblock,bfile,MASK,MSTAT,MTOP,KMER_LEN);
-        if (isdam)
+        if (read_DB(bblock,bfile,MASK,MSTAT,MTOP,KMER_LEN))
           broot = Root(bfile,".dam");
         else
           broot = Root(bfile,".db");
-        bindex = NULL;
+        if (VERBOSE)
+          printf("\nBuilding index for %s\n",broot);
+        bindex = Sort_Kmers(bblock,&blen);
 
         for (k = 1; k <= nblocks; k++)
           { if (isdam)
@@ -840,25 +839,6 @@ int main(int argc, char *argv[])
             read_DB(ablock,afile,MASK,MSTAT,MTOP,KMER_LEN);
             free(afile);
 
-            if (k == 1)
-              { if (i == 2)
-                  { for (j = 0; j < MTOP; j++)
-                      { if (MSTAT[j] == -2)
-                          printf("%s: Warning: -m%s option given but no track found.\n",
-                                 Prog_Name,MASK[i]);
-                        else if (MSTAT[j] == -1)
-                          printf("%s: Warning: %s track not sync'd with relevant db.\n",
-                                 Prog_Name,MASK[i]);
-                        else if (MSTAT[j] == -3)
-                          printf("%s: Warning: %s track is not a mask track.\n",Prog_Name,MASK[i]);
-                      }
-                  }
-
-                if (VERBOSE)
-                  printf("\nBuilding index for %s\n",broot);
-                bindex = Sort_Kmers(bblock,&blen);
-              }
- 
             if (VERBOSE)
               printf("\nBuilding index for %s.%d\n",aroot,k);
             aindex = Sort_Kmers(ablock,&alen);
@@ -896,8 +876,6 @@ int main(int argc, char *argv[])
         free(bindex);
         Close_DB(bblock);
 
-        command = CommandBuffer(aroot,broot,SORT_PATH);
-
 #define SYSTEM_CHECK(command)                                           \
  if (VERBOSE)                                                           \
    printf("%s\n",command);                                              \
@@ -906,6 +884,8 @@ int main(int argc, char *argv[])
                     Prog_Name,(int) strlen(Prog_Name),"",command);      \
      Clean_Exit(1);                                                     \
    }
+
+        command = CommandBuffer(aroot,broot,SORT_PATH);
 
         if ((mflag & FLAG_DOA) != 0)
           { sprintf(command,"LAsort %s %s %s/%s.%s.M%c.las",VERBOSE?"-v":"",
@@ -929,6 +909,10 @@ int main(int argc, char *argv[])
 
         free(broot);
       }
+
+    for (j = 0; j < MTOP; j++)
+      if (MSTAT[j] == 0)
+        printf("%s: Warning: Track %s given but never used.\n", Prog_Name,MASK[j]);
   }
 
   Clean_Exit(0);
