@@ -29,12 +29,8 @@
 
 #define THREAD    pthread_t
 
-#define MAX_BIAS  2    //  In -b mode, don't consider tuples with specificity
-                       //     <= 4 ^ -(kmer-MAX_BIAS)
-
 #define MAXGRAM 10000  //  Cap on k-mer count histogram (in count_thread, merge_thread)
 
-#define BINWIDTH  64   //  minimum width of a diagonal bucket
 #define HITMIN    3    //  minimum # of k-mers in a potential seed
 
 #define MAX_GAP   1000 //  maximum separation between two k-mers in a chain

@@ -23,9 +23,9 @@
 #undef  SLURM  //  define if want a directly executable SLURM script
 
 static char *Usage[] =
-  { "[-vbpzCN] [-k<int(20)>] [-t<int>] [-M<int>] [-e<double(.85)] [-s<int(100)]",
-    "          [-n<double(1.)] [-m<track>]+ [-B<int( 4)>] [-T<int(4)>] [-f<name>]",
-    "          <ref:db|dam> <reads:db|dam> [<first:int>[-<last:int>]]"
+  { "[-vpzCN] [-k<int(20)>] [-t<int>] [-M<int>] [-e<double(.85)] [-s<int(100)]",
+    "         [-n<double(1.)] [-m<track>]+ [-B<int( 4)>] [-T<int(4)>] [-f<name>]",
+    "         <ref:db|dam> <reads:db|dam> [<first:int>[-<last:int>]]"
   };
 
 #ifdef LSF
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
   int    FORWARD, REVERSE;
   int    BUNIT;
-  int    VON, BON, PON, CON, NON, ZON;
+  int    VON, PON, CON, NON, ZON;
   int    TINT, KINT, SINT, MINT;
   int    NTHREADS;
   double EREL, NEIGHBOR;
@@ -150,7 +150,6 @@ int main(int argc, char *argv[])
     argc = j;
 
     VON = flags['v'];
-    BON = flags['b'];
     PON = flags['p'];
     ZON = flags['z'];
     CON = flags['C'];
@@ -395,8 +394,6 @@ int main(int argc, char *argv[])
           fprintf(out,"damapper");
           if (VON)
             fprintf(out," -v");
-          if (BON)
-            fprintf(out," -b");
           if (PON)
             fprintf(out," -p");
           if (ZON)
